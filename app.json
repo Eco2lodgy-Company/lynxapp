@@ -12,9 +12,11 @@
       "backgroundColor": "#0F172A"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.nawarazak.lynx"
     },
     "android": {
+      "package": "com.nawarazak.lynx",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -29,6 +31,13 @@
     "scheme": "lynx",
     "plugins": [
       "expo-router"
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "d28386d1-8290-4795-bfc6-d8d01574b03b"
+      }
+    },
+    "owner": "nawarazak"
   }
 }
