@@ -4,31 +4,36 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        primary: "#14F195",
-        "primary-dark": "#0ea368",
+        // écoTech Brand Colors
+        primary: "#C8842A",          // Warm amber-brown (main logo color)
+        "primary-dark": "#A0671E",   // Darker brown
+        eco: "#7A8000",              // Olive green ("é" in écoTech)
+        "eco-light": "rgba(122,128,0,0.15)",
+        "brand-dark": "#6B2F10",     // Deep dark brown (logo handle)
+        "brand-sand": "#D2A76A",     // Light sand/beige
         bg: {
-          light: "#F8FAFC",
-          dark: "#0F172A",
+          light: "#FAF6F1",          // Warm off-white for light surfaces
+          dark: "#0F0C08",           // Very dark warm background
         },
         surface: {
           light: "#FFFFFF",
-          dark: "#1E293B",
-          accent: "#334155",
+          dark: "#1A1410",           // Warm dark card surface
+          accent: "#2A1E0F",
         },
         border: {
-          light: "#E2E8F0",
-          dark: "#334155",
-          accent: "rgba(20, 241, 149, 0.2)",
+          light: "#E8DDD0",
+          dark: "#3D2E1A",           // Warm border
+          accent: "rgba(200, 132, 42, 0.25)",
         },
         slate: {
-          950: "#020617",
-          900: "#0F172A",
-          800: "#1E293B",
-          700: "#334155",
-          600: "#475569",
-          500: "#64748B",
-          400: "#94A3B8",
-          300: "#CBD5E1",
+          950: "#07050300",
+          900: "#0F0C08",
+          800: "#1A1410",
+          700: "#2A1E0F",
+          600: "#4A3520",
+          500: "#7A6040",
+          400: "#A08060",
+          300: "#C8A880",
         }
       },
       spacing: {
