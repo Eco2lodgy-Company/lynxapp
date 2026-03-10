@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "mobile",
-    "slug": "mobile",
+    "name": "lynx-app",
+    "slug": "lynx-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -35,7 +35,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "d28386d1-8290-4795-bfc6-d8d01574b03b"
+        "projectId": "7881ced9-7c1a-4956-91bd-742ed7dd02a7"
       }
     },
     "owner": "nawarazak"

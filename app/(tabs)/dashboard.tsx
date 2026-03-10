@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, RefreshControl, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../lib/api';
 import { Button } from '../../components/ui/Button';
@@ -11,7 +11,8 @@ import {
     ChevronRight,
     CircleDollarSign,
     Truck,
-    ClipboardList
+    ClipboardList,
+    Clock
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,22 +23,16 @@ export default function DashboardScreen() {
     const insets = useSafeAreaInsets();
     const [refreshing, setRefreshing] = useState(false);
     const [stats, setStats] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
 
     const fetchStats = async () => {
         try {
-            // Placeholder: Replace with actual stats endpoint when ready
-            // const response = await api.get('/stats/summary');
-            // setStats(response.data);
-            
-            // Simulating stats for now
-            setStats({
-                activeProjects: 3,
-                pendingValidations: 5,
-                recentIncidents: 2,
-                completedTasks: 12
-            });
+            const response = await api.get('/stats');
+            setStats(response.data);
         } catch (error) {
             console.error("Error fetching stats:", error);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -53,13 +48,58 @@ export default function DashboardScreen() {
 
     const StatCard = ({ title, value, icon: Icon, color }: any) => (
         <View className="bg-slate-800/50 p-4 rounded-2xl border border-slate-700/50 w-[48%] mb-4">
-            <View className={`w-10 h-10 rounded-xl items-center justify-center mb-3 ${color} bg-opacity-20`}>
-                <Icon size={20} color={color.replace('bg-', '#')} />
+            <View className="w-10 h-10 rounded-xl items-center justify-center mb-3" style={{ backgroundColor: color + '22' }}>
+                <Icon size={20} color={color} />
             </View>
             <Text className="text-slate-400 text-xs font-medium mb-1">{title}</Text>
-            <Text className="text-white text-xl font-bold">{value}</Text>
+            <Text className="text-white text-xl font-bold">{loading ? '...' : (value ?? 0)}</Text>
         </View>
     );
+
+    const quickActions = [
+        {
+            label: 'Nouveau Journal',
+            sub: "Rapporter l'avancement du jour",
+            icon: ClipboardList,
+            color: '#3B82F6',
+            roles: ['CHEF_EQUIPE', 'CONDUCTEUR', 'ADMIN'],
+            onPress: () => {},
+        },
+        {
+            label: 'Pointage',
+            sub: "Enregistrer votre présence",
+            icon: Clock,
+            color: '#22C55E',
+            roles: ['CHEF_EQUIPE', 'OUVRIER', 'CONDUCTEUR', 'ADMIN'],
+            onPress: () => router.push('/attendance'),
+        },
+        {
+            label: 'Signaler Incident',
+            sub: "Signaler un problème critique",
+            icon: AlertTriangle,
+            color: '#EF4444',
+            roles: ['CHEF_EQUIPE', 'CONDUCTEUR', 'ADMIN'],
+            onPress: () => {},
+        },
+        {
+            label: "Demander une avance",
+            sub: "Alerte besoin en fonds",
+            icon: CircleDollarSign,
+            color: '#F59E0B',
+            roles: ['CHEF_EQUIPE'],
+            onPress: () => router.push('/advance-request'),
+        },
+        {
+            label: 'Planning Livraisons',
+            sub: 'Suivi logistique du chantier',
+            icon: Truck,
+            color: '#6366F1',
+            roles: ['CHEF_EQUIPE', 'CONDUCTEUR', 'ADMIN'],
+            onPress: () => router.push('/deliveries'),
+        },
+    ];
+
+    const visibleActions = quickActions.filter(a => a.roles.includes(user?.role || ''));
 
     return (
         <ScrollView 
@@ -67,7 +107,7 @@ export default function DashboardScreen() {
             contentContainerStyle={{ 
                 padding: 20, 
                 paddingTop: Math.max(insets.top, 20),
-                paddingBottom: Math.max(insets.bottom, 80) // Space for tabs
+                paddingBottom: Math.max(insets.bottom, 80)
             }}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#22C55E" />}
         >
@@ -82,31 +122,10 @@ export default function DashboardScreen() {
             </View>
 
             <View className="flex-row flex-wrap justify-between">
-                <StatCard 
-                    title="Projets Actifs" 
-                    value={stats?.activeProjects || 0} 
-                    icon={Briefcase} 
-                    color="#3B82F6" 
-                    className="bg-blue-500"
-                />
-                <StatCard 
-                    title="Validations" 
-                    value={stats?.pendingValidations || 0} 
-                    icon={CheckCircle2} 
-                    color="#22C55E" 
-                />
-                <StatCard 
-                    title="Incidents" 
-                    value={stats?.recentIncidents || 0} 
-                    icon={AlertTriangle} 
-                    color="#EF4444" 
-                />
-                <StatCard 
-                    title="Tâches" 
-                    value={stats?.completedTasks || 0} 
-                    icon={Activity} 
-                    color="#A855F7" 
-                />
+                <StatCard title="Projets Actifs" value={stats?.activeProjects} icon={Briefcase} color="#3B82F6" />
+                <StatCard title="Validations" value={stats?.pendingValidations} icon={CheckCircle2} color="#22C55E" />
+                <StatCard title="Incidents" value={stats?.recentIncidents} icon={AlertTriangle} color="#EF4444" />
+                <StatCard title="Tâches faites" value={stats?.completedTasks} icon={Activity} color="#A855F7" />
             </View>
 
             <View className="mt-4 mb-8">
@@ -114,67 +133,25 @@ export default function DashboardScreen() {
                     <Text className="text-white text-xl font-bold">Actions Rapides</Text>
                 </View>
                 
-                <TouchableOpacity className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700 mb-3 flex-row items-center justify-between">
-                    <View className="flex-row items-center">
-                        <View className="w-10 h-10 bg-blue-500/20 rounded-full items-center justify-center mr-3">
-                            <ClipboardList color="#3B82F6" size={20} />
-                        </View>
-                        <View>
-                            <Text className="text-white font-semibold text-base">Nouveau Journal</Text>
-                            <Text className="text-slate-400 text-[11px] mt-0.5">Rapporter l'avancement du jour</Text>
-                        </View>
-                    </View>
-                    <ChevronRight color="#475569" size={20} />
-                </TouchableOpacity>
-
-                <TouchableOpacity className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700 mb-3 flex-row items-center justify-between">
-                    <View className="flex-row items-center">
-                        <View className="w-10 h-10 bg-red-500/20 rounded-full items-center justify-center mr-3">
-                            <AlertTriangle color="#EF4444" size={20} />
-                        </View>
-                        <View>
-                            <Text className="text-white font-semibold">Signaler Incident</Text>
-                            <Text className="text-slate-400 text-xs">Signaler un problème critique</Text>
-                        </View>
-                    </View>
-                    <ChevronRight color="#475569" size={20} />
-                </TouchableOpacity>
-
-                {user?.role === 'CHEF_EQUIPE' && (
-                    <TouchableOpacity 
-                        onPress={() => router.push('/advance-request')}
+                {visibleActions.map((action, index) => (
+                    <TouchableOpacity
+                        key={index}
+                        onPress={action.onPress}
                         className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700 mb-3 flex-row items-center justify-between"
+                        activeOpacity={0.7}
                     >
                         <View className="flex-row items-center">
-                            <View className="w-10 h-10 bg-amber-500/20 rounded-full items-center justify-center mr-3">
-                                <CircleDollarSign color="#F59E0B" size={20} />
+                            <View className="w-10 h-10 rounded-full items-center justify-center mr-3" style={{ backgroundColor: action.color + '22' }}>
+                                <action.icon color={action.color} size={20} />
                             </View>
                             <View>
-                                <Text className="text-white font-semibold">Demander une avance</Text>
-                                <Text className="text-slate-400 text-xs">Alerte besoin en fonds</Text>
+                                <Text className="text-white font-semibold text-base">{action.label}</Text>
+                                <Text className="text-slate-400 text-[11px] mt-0.5">{action.sub}</Text>
                             </View>
                         </View>
                         <ChevronRight color="#475569" size={20} />
                     </TouchableOpacity>
-                )}
-
-                {(user?.role === 'CONDUCTEUR' || user?.role === 'ADMIN' || user?.role === 'CHEF_EQUIPE') && (
-                    <TouchableOpacity 
-                        onPress={() => router.push('/deliveries')}
-                        className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700 mb-3 flex-row items-center justify-between"
-                    >
-                        <View className="flex-row items-center">
-                            <View className="w-10 h-10 bg-indigo-500/20 rounded-full items-center justify-center mr-3">
-                                <Truck color="#6366F1" size={20} />
-                            </View>
-                            <View>
-                                <Text className="text-white font-semibold">Planning Livraisons</Text>
-                                <Text className="text-slate-400 text-xs">Suivi logistique du chantier</Text>
-                            </View>
-                        </View>
-                        <ChevronRight color="#475569" size={20} />
-                    </TouchableOpacity>
-                )}
+                ))}
             </View>
 
             <Button 

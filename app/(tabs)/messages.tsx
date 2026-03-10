@@ -4,6 +4,7 @@ import api from '../../lib/api';
 import { MessageSquare, ChevronRight, User } from 'lucide-react-native';
 import { useAuth } from '../../context/AuthContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 
 export default function MessagesScreen() {
     const [refreshing, setRefreshing] = useState(false);
@@ -11,6 +12,7 @@ export default function MessagesScreen() {
     const [loading, setLoading] = useState(true);
     const { user } = useAuth();
     const insets = useSafeAreaInsets();
+    const router = useRouter();
 
     const fetchConversations = async () => {
         try {
@@ -42,6 +44,7 @@ export default function MessagesScreen() {
             <TouchableOpacity 
                 className="bg-slate-800/50 p-4 rounded-2xl border border-slate-700/50 mb-3 flex-row items-center"
                 activeOpacity={0.7}
+                onPress={() => router.push(`/conversation/${conversation.id}`)}
             >
                 <View className="w-12 h-12 rounded-2xl bg-slate-800 items-center justify-center mr-4 border border-white/5">
                     <User size={24} color="#14F195" />

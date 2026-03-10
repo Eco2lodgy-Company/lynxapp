@@ -90,10 +90,10 @@ export default function ProjectsScreen() {
             <View>
                 <View className="flex-row justify-between items-center mb-2">
                     <Text className="text-slate-400 text-xs">Avancement global</Text>
-                    <Text className="text-white text-xs font-bold">65%</Text>
+                    <Text className="text-white text-xs font-bold">{Math.round(project.progress ?? 0)}%</Text>
                 </View>
                 <View className="w-full h-2 bg-slate-700/50 rounded-full overflow-hidden border border-white/5">
-                    <View className="h-full bg-primary w-[65%] shadow-sm shadow-primary" />
+                    <View className="h-full bg-primary shadow-sm shadow-primary" style={{ width: `${Math.min(100, project.progress ?? 0)}%` }} />
                 </View>
             </View>
         </TouchableOpacity>
