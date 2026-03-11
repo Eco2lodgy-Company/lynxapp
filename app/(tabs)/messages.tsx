@@ -47,7 +47,7 @@ export default function MessagesScreen() {
                 onPress={() => router.push(`/conversation/${conversation.id}`)}
             >
                 <View className="w-12 h-12 rounded-2xl bg-slate-800 items-center justify-center mr-4 border border-white/5">
-                    <User size={24} color="#14F195" />
+                    <User size={24} color="#C8842A" />
                 </View>
                 
                 <View className="flex-1">

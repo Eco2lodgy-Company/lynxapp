@@ -51,7 +51,7 @@ export default function ProfileScreen() {
                         {user?.image ? (
                             <Image source={{ uri: user.image }} className="w-full h-full" />
                         ) : (
-                            <User size={48} color="#14F195" />
+                            <User size={48} color="#C8842A" />
                         )}
                     </View>
                     <View className="absolute -bottom-1 -right-1 bg-primary w-6 h-6 rounded-full border-2 border-slate-900 items-center justify-center shadow-sm">

@@ -199,7 +199,7 @@ export default function ReportsScreen() {
 
             {loading ? (
                 <View className="flex-1 items-center justify-center">
-                    <ActivityIndicator color="#14F195" size="large" />
+                    <ActivityIndicator color="#C8842A" size="large" />
                 </View>
             ) : (
                 <ScrollView 

@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import api from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 import { ChevronLeft, Send, Paperclip, Camera } from 'lucide-react-native';
+import * as ImagePicker from 'expo-image-picker';
 
 export default function ConversationScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
@@ -21,6 +22,7 @@ export default function ConversationScreen() {
     const [loading, setLoading] = useState(true);
     const [text, setText] = useState('');
     const [sending, setSending] = useState(false);
+    const [attachments, setAttachments] = useState<{uri: string, type: string, name: string}[]>([]);
 
     const fetchMessages = async () => {
         try {
@@ -47,15 +49,36 @@ export default function ConversationScreen() {
     }, [messages.length]);
 
     const sendMessage = async () => {
-        if (!text.trim()) return;
+        if (!text.trim() && attachments.length === 0) return;
         setSending(true);
         const messageText = text.trim();
         setText('');
         try {
+            let uploadedUrls: string[] = [];
+            
+            // Upload attachments first
+            for (const att of attachments) {
+                const formData = new FormData();
+                formData.append('file', {
+                    uri: att.uri,
+                    type: att.type,
+                    name: att.name
+                } as any);
+
+                const uploadRes = await api.post('/upload', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+                if (uploadRes.data?.url) {
+                    uploadedUrls.push(uploadRes.data.url);
+                }
+            }
+
             await api.post('/messages', {
                 conversationId: id,
                 content: messageText,
+                attachments: uploadedUrls,
             });
+            setAttachments([]); // Clear attachments on success
             fetchMessages();
         } catch (err: any) {
             Alert.alert('Erreur', err.response?.data?.error || 'Impossible d\'envoyer le message');
@@ -65,13 +88,50 @@ export default function ConversationScreen() {
         }
     };
 
+    const pickMedia = async (useCamera: boolean) => {
+        try {
+            const { status } = useCamera 
+                ? await ImagePicker.requestCameraPermissionsAsync()
+                : await ImagePicker.requestMediaLibraryPermissionsAsync();
+            
+            if (status !== 'granted') {
+                Alert.alert('Permission requise', 'Nous avons besoin d\'accéder à votre caméra ou galerie.');
+                return;
+            }
+
+            const result = useCamera 
+                ? await ImagePicker.launchCameraAsync({
+                    mediaTypes: ['images', 'videos'],
+                    allowsEditing: true,
+                    quality: 0.8,
+                  })
+                : await ImagePicker.launchImageLibraryAsync({
+                    mediaTypes: ['images', 'videos'],
+                    allowsEditing: true,
+                    quality: 0.8,
+                  });
+
+            if (!result.canceled && result.assets[0]) {
+                const asset = result.assets[0];
+                const uri = asset.uri;
+                const type = asset.type === 'video' ? 'video/mp4' : 'image/jpeg';
+                const name = uri.split('/').pop() || `media-${Date.now()}`;
+                
+                setAttachments(prev => [...prev, { uri, type, name }]);
+            }
+        } catch (error) {
+            console.error('Error picking media:', error);
+            Alert.alert('Erreur', 'Impossible de charger le média.');
+        }
+    };
+
     const handleAttachPhoto = () => {
         Alert.alert(
             'Joindre un fichier',
             'Choisissez une option',
             [
-                { text: 'Prendre une photo', onPress: () => Alert.alert('Info', 'Installez expo-image-picker pour cette fonctionnalité') },
-                { text: 'Galerie', onPress: () => Alert.alert('Info', 'Installez expo-image-picker pour cette fonctionnalité') },
+                { text: 'Prendre une photo/vidéo', onPress: () => pickMedia(true) },
+                { text: 'Galerie', onPress: () => pickMedia(false) },
                 { text: 'Annuler', style: 'cancel' },
             ]
         );
@@ -197,15 +257,32 @@ export default function ConversationScreen() {
 
             {/* Input Bar */}
             <View
-                className="flex-row items-center px-4 py-3 bg-slate-800 border-t border-slate-700"
+                className="bg-slate-800 border-t border-slate-700"
                 style={{ paddingBottom: Math.max(insets.bottom, 12) }}
             >
-                <TouchableOpacity
-                    onPress={handleAttachPhoto}
-                    className="w-10 h-10 rounded-full bg-slate-700 items-center justify-center mr-2"
-                >
-                    <Paperclip size={18} color="#94A3B8" />
-                </TouchableOpacity>
+                {/* Pending Attachments Preview */}
+                {attachments.length > 0 && (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} className="px-4 py-2 border-b border-slate-700/50">
+                        {attachments.map((att, i) => (
+                            <View key={i} className="mr-3 relative mt-2 mb-2">
+                                <Image source={{ uri: att.uri }} className="w-16 h-16 rounded-xl border border-slate-600" />
+                                <TouchableOpacity 
+                                    onPress={() => setAttachments(prev => prev.filter((_, idx) => idx !== i))}
+                                    className="absolute -top-2 -right-2 bg-red-500 rounded-full w-5 h-5 items-center justify-center border border-slate-800"
+                                >
+                                    <Text className="text-white text-[10px] font-bold">X</Text>
+                                </TouchableOpacity>
+                            </View>
+                        ))}
+                    </ScrollView>
+                )}
+                <View className="flex-row items-center px-4 py-3">
+                    <TouchableOpacity
+                        onPress={handleAttachPhoto}
+                        className="w-10 h-10 rounded-full bg-slate-700 items-center justify-center mr-2"
+                    >
+                        <Paperclip size={18} color="#94A3B8" />
+                    </TouchableOpacity>
                 <TextInput
                     className="flex-1 bg-slate-900 border border-slate-700 rounded-2xl px-4 py-2.5 text-white text-sm max-h-28"
                     placeholder="Écrire un message..."
@@ -215,17 +292,18 @@ export default function ConversationScreen() {
                     multiline
                     returnKeyType="default"
                 />
-                <TouchableOpacity
-                    onPress={sendMessage}
-                    disabled={sending || !text.trim()}
-                    className={`w-10 h-10 rounded-full items-center justify-center ml-2 ${text.trim() ? 'bg-primary' : 'bg-slate-700'}`}
-                >
-                    {sending ? (
-                        <ActivityIndicator size="small" color="#0F172A" />
-                    ) : (
-                        <Send size={17} color={text.trim() ? '#0F172A' : '#475569'} />
-                    )}
-                </TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={sendMessage}
+                        disabled={sending || (!text.trim() && attachments.length === 0)}
+                        className={`w-10 h-10 rounded-full items-center justify-center ml-2 ${(text.trim() || attachments.length > 0) ? 'bg-primary' : 'bg-slate-700'}`}
+                    >
+                        {sending ? (
+                            <ActivityIndicator size="small" color="#0F172A" />
+                        ) : (
+                            <Send size={17} color={(text.trim() || attachments.length > 0) ? '#0F172A' : '#475569'} />
+                        )}
+                    </TouchableOpacity>
+                </View>
             </View>
         </KeyboardAvoidingView>
     );

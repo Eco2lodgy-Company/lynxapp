@@ -74,7 +74,7 @@ export default function ProjectsScreen() {
 
             <View className="bg-slate-900/50 rounded-xl p-3 mb-4 flex-row justify-between items-center">
                 <View className="flex-row items-center">
-                    <User size={14} color="#14F195" />
+                    <User size={14} color="#C8842A" />
                     <Text className="text-slate-300 text-xs ml-2 font-medium">
                         {project.supervisor?.firstName} {project.supervisor?.lastName}
                     </Text>
