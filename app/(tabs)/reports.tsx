@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, RefreshControl, TouchableOpacity, ActivityIndicator, TextInput, Alert, Modal } from 'react-native';
+import { View, Text, ScrollView, RefreshControl, TouchableOpacity, ActivityIndicator, TextInput, Alert, Modal, StyleSheet, Platform } from 'react-native';
 import api from '../../lib/api';
 import { 
     ClipboardList, 
@@ -11,12 +11,18 @@ import {
     CheckCircle2,
     XCircle,
     FileText,
-    X
+    X,
+    ChevronRight,
+    Filter
 } from 'lucide-react-native';
 import { Input } from '../../components/ui/Input';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../../components/ui/Button';
+import { LinearGradient } from 'expo-linear-gradient';
+import { PremiumCard } from '../../components/ui/PremiumCard';
+import Animated, { FadeInDown, FadeInUp, Layout } from 'react-native-reanimated';
+import { BlurView } from 'expo-blur';
 
 const STATUS_LABELS: Record<string, string> = {
     BROUILLON: 'BROUILLON',
@@ -25,11 +31,11 @@ const STATUS_LABELS: Record<string, string> = {
     REJETE: 'REJETÉ',
 };
 
-const STATUS_STYLE: Record<string, { bg: string; border: string; text: string }> = {
-    BROUILLON: { bg: 'bg-slate-700/30', border: 'border-slate-600/40', text: 'text-slate-400' },
-    SOUMIS: { bg: 'bg-amber-500/10', border: 'border-amber-500/20', text: 'text-amber-500' },
-    VALIDE: { bg: 'bg-primary/10', border: 'border-primary/20', text: 'text-primary' },
-    REJETE: { bg: 'bg-red-500/10', border: 'border-red-500/20', text: 'text-red-400' },
+const STATUS_STYLE: Record<string, { bg: string; border: string; text: string; color: string }> = {
+    BROUILLON: { bg: 'bg-slate-700/30', border: 'border-white/5', text: 'text-slate-400', color: '#64748B' },
+    SOUMIS: { bg: 'bg-amber-500/10', border: 'border-amber-500/20', text: 'text-amber-500', color: '#F59E0B' },
+    VALIDE: { bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', text: 'text-emerald-500', color: '#10B981' },
+    REJETE: { bg: 'bg-red-500/10', border: 'border-red-500/20', text: 'text-red-400', color: '#EF4444' },
 };
 
 export default function ReportsScreen() {
@@ -80,7 +86,7 @@ export default function ReportsScreen() {
     const handleReject = async () => {
         if (!rejectModal.logId) return;
         if (!counterNotes.trim()) {
-            Alert.alert('Requis', 'Veuillez saisir les notes de contre-visite avant de rejeter.');
+            Alert.alert('Requis', 'Veuillez saisir les notes de contre-visite.');
             return;
         }
         setActionLoading(true);
@@ -89,7 +95,7 @@ export default function ReportsScreen() {
                 status: 'REJETE', 
                 correctionNotes: counterNotes.trim() 
             });
-            Alert.alert('❌ Rejeté', 'Le journal a été rejeté avec les notes de contre-visite.');
+            Alert.alert('❌ Rejeté', 'Journal rejeté avec succès.');
             setRejectModal({ visible: false, logId: null });
             setCounterNotes('');
             fetchLogs();
@@ -105,155 +111,199 @@ export default function ReportsScreen() {
         l.summary?.toLowerCase().includes(search.toLowerCase())
     );
 
-    const LogCard = ({ log }: { log: any }) => {
+    const LogCard = ({ log, index }: { log: any, index: number }) => {
         const style = STATUS_STYLE[log.status] || STATUS_STYLE.BROUILLON;
         return (
-            <View className="bg-slate-800/50 p-4 rounded-2xl border border-slate-700/50 mb-4">
-                <View className="flex-row justify-between items-start mb-3">
+            <PremiumCard index={index} glass={true} style={{ padding: 18, marginBottom: 16 }}>
+                <View className="flex-row justify-between items-start mb-4">
                     <View className="flex-1">
-                        <Text className="text-white font-bold text-lg mb-1" numberOfLines={1}>
+                        <Text className="text-white font-black text-lg tracking-tight mb-1.5" numberOfLines={1}>
                             {log.project?.name}
                         </Text>
-                        <View className="flex-row items-center">
-                            <Calendar size={12} color="#94A3B8" />
-                            <Text className="text-slate-400 text-xs ml-1">
-                                {new Date(log.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        <View className="flex-row items-center bg-white/5 self-start px-2.5 py-1 rounded-lg border border-white/5">
+                            <Calendar size={12} color="#94A3B8" strokeWidth={2.5} />
+                            <Text className="text-slate-400 text-[10px] font-black uppercase tracking-widest ml-2">
+                                {new Date(log.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
                             </Text>
                         </View>
                     </View>
-                    <View className={`px-2.5 py-1 rounded-full border ${style.bg} ${style.border}`}>
-                        <Text className={`text-[10px] font-bold tracking-wider ${style.text}`}>
+                    <View className={`px-3 py-1 transparent rounded-full border ${style.border}`}>
+                        <Text className={`text-[9px] font-black tracking-[1.5px] uppercase ${style.text}`}>
                             {STATUS_LABELS[log.status] || log.status}
                         </Text>
                     </View>
                 </View>
 
                 {log.summary && (
-                    <Text className="text-slate-300 text-sm mb-3" numberOfLines={2}>{log.summary}</Text>
+                    <Text className="text-slate-400 text-sm leading-5 mb-4" numberOfLines={2}>{log.summary}</Text>
                 )}
 
                 {log.correctionNotes && log.status === 'REJETE' && (
-                    <View className="bg-red-500/10 border border-red-500/20 p-3 rounded-xl mb-3">
-                        <Text className="text-red-300 text-xs font-semibold mb-1">Note de contre-visite :</Text>
-                        <Text className="text-red-200 text-xs">{log.correctionNotes}</Text>
+                    <View className="bg-red-500/10 border border-red-500/20 p-4 rounded-2xl mb-4">
+                        <View className="flex-row items-center mb-1.5">
+                            <XCircle size={14} color="#EF4444" strokeWidth={2.5} />
+                            <Text className="text-red-400 text-[10px] font-black uppercase tracking-widest ml-2">Contre-visite</Text>
+                        </View>
+                        <Text className="text-red-200/80 text-xs leading-5 font-medium">{log.correctionNotes}</Text>
                     </View>
                 )}
 
-                <View className="flex-row items-center justify-between pt-3 border-t border-slate-700/50">
+                <View className="flex-row items-center justify-between pt-4 border-t border-white/5">
                     <View className="flex-row items-center">
-                        <View className="flex-row items-center mr-4">
-                            <CloudRain size={14} color="#64748B" />
-                            <Text className="text-slate-400 text-xs ml-1">{log.weather || 'N/A'}</Text>
+                        <View className="flex-row items-center mr-5">
+                            <CloudRain size={14} color="#C8842A" strokeWidth={2} />
+                            <Text className="text-slate-200 text-[11px] font-bold ml-2 uppercase tracking-tighter">{log.weather || '—'}</Text>
                         </View>
                         <View className="flex-row items-center">
-                            <Thermometer size={14} color="#64748B" />
-                            <Text className="text-slate-400 text-xs ml-1">{log.temperature ? `${log.temperature}°C` : 'N/A'}</Text>
+                            <Thermometer size={14} color="#C8842A" strokeWidth={2} />
+                            <Text className="text-slate-200 text-[11px] font-bold ml-1 uppercase">{log.temperature ? `${log.temperature}°C` : '—'}</Text>
                         </View>
                     </View>
-                    <View className="flex-row items-center">
-                        <User size={14} color="#64748B" />
-                        <Text className="text-slate-400 text-[10px] ml-1">{log.author?.firstName}</Text>
+                    <View className="bg-white/5 px-2.5 py-1 rounded-lg border border-white/5">
+                        <Text className="text-slate-500 text-[9px] font-black uppercase tracking-widest">{log.author?.firstName}</Text>
                     </View>
                 </View>
 
-                {/* Validation Actions for Conducteur/Admin — only on SOUMIS logs */}
                 {canValidate && log.status === 'SOUMIS' && (
-                    <View className="flex-row mt-3 pt-3 border-t border-slate-700/50 gap-2">
+                    <View className="flex-row mt-5 pt-5 border-t border-white/5 gap-3">
                         <TouchableOpacity
                             onPress={() => handleValidate(log.id)}
                             disabled={actionLoading}
-                            className="flex-1 flex-row items-center justify-center bg-primary/10 border border-primary/20 py-2.5 rounded-xl"
+                            activeOpacity={0.7}
+                            className="flex-1 h-12 flex-row items-center justify-center bg-emerald-500 rounded-xl shadow-lg shadow-emerald-500/20"
                         >
-                            <CheckCircle2 size={15} color="#22C55E" />
-                            <Text className="text-primary font-bold text-xs ml-1.5">Valider</Text>
+                            <CheckCircle2 size={16} color="#0F172A" strokeWidth={3} />
+                            <Text className="text-slate-900 font-black text-xs uppercase tracking-tight ml-2">Valider</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             onPress={() => { setRejectModal({ visible: true, logId: log.id }); setCounterNotes(''); }}
                             disabled={actionLoading}
-                            className="flex-1 flex-row items-center justify-center bg-red-500/10 border border-red-500/20 py-2.5 rounded-xl"
+                            activeOpacity={0.7}
+                            className="flex-1 h-12 flex-row items-center justify-center bg-slate-900 border border-red-500/30 rounded-xl"
                         >
-                            <XCircle size={15} color="#EF4444" />
-                            <Text className="text-red-400 font-bold text-xs ml-1.5">Rejeter</Text>
+                            <XCircle size={16} color="#EF4444" strokeWidth={2.5} />
+                            <Text className="text-red-400 font-black text-xs uppercase tracking-tight ml-2">Rejeter</Text>
                         </TouchableOpacity>
                     </View>
                 )}
-            </View>
+            </PremiumCard>
         );
     };
 
     return (
-        <View className="flex-1 bg-slate-900 px-5" style={{ paddingTop: Math.max(insets.top, 24) }}>
-            <View className="mb-6">
-                <Text className="text-white text-3xl font-bold mb-2">Journaux</Text>
-                <Text className="text-slate-400 text-sm">Suivi quotidien des activités de chantier</Text>
-            </View>
+        <View className="flex-1 bg-slate-950">
+            <LinearGradient
+                colors={['#1e293b', '#0f172a', '#020617']}
+                style={StyleSheet.absoluteFill}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+            />
+            
+            <View 
+                className="flex-1 px-5"
+                style={{ paddingTop: Math.max(insets.top, 24) }}
+            >
+                <Animated.View entering={FadeInUp.duration(600)} className="mb-8">
+                    <Text className="text-slate-500 text-sm font-bold uppercase tracking-[4px] mb-2">Historique</Text>
+                    <Text className="text-white text-4xl font-black tracking-tighter">Journaux</Text>
+                </Animated.View>
 
-            <View className="mb-6">
-                <Input 
-                    placeholder="Chercher par projet ou résumé..." 
-                    value={search}
-                    onChangeText={setSearch}
-                    icon={<Search size={20} color="#64748B" />}
-                />
-            </View>
+                <Animated.View entering={FadeInUp.delay(200)} className="mb-8">
+                    <PremiumCard index={-1} glass={true} style={{ padding: 4, borderRadius: 20 }}>
+                        <Input 
+                            placeholder="Rechercher un rapport..." 
+                            value={search}
+                            onChangeText={setSearch}
+                            //@ts-ignore
+                            placeholderTextColor="#64748B"
+                            className="bg-transparent border-0 h-14"
+                            icon={<Search size={22} color="#C8842A" strokeWidth={2.5} />}
+                        />
+                    </PremiumCard>
+                </Animated.View>
 
-            {loading ? (
-                <View className="flex-1 items-center justify-center">
-                    <ActivityIndicator color="#C8842A" size="large" />
-                </View>
-            ) : (
-                <ScrollView 
-                    className="flex-1"
-                    showsVerticalScrollIndicator={false}
-                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#22C55E" />}
-                >
-                    {filteredLogs.length > 0 ? (
-                        filteredLogs.map(log => <LogCard key={log.id} log={log} />)
-                    ) : (
-                        <View className="items-center justify-center py-20">
-                            <Text className="text-slate-500 italic">Aucun journal trouvé</Text>
-                        </View>
-                    )}
-                    <View className="h-20" />
-                </ScrollView>
-            )}
-
-            {/* Reject Modal with Counter-Notes */}
-            <Modal visible={rejectModal.visible} transparent animationType="slide">
-                <View className="flex-1 bg-slate-900/80 justify-end">
-                    <View className="bg-slate-800 rounded-t-3xl border-t border-slate-700 p-6" style={{ paddingBottom: Math.max(insets.bottom, 24) }}>
-                        <View className="flex-row justify-between items-center mb-6">
-                            <View className="flex-row items-center">
-                                <FileText size={20} color="#EF4444" />
-                                <Text className="text-white text-xl font-bold ml-2">Contre-visite</Text>
+                {loading ? (
+                    <View className="flex-1 items-center justify-center">
+                        <ActivityIndicator color="#C8842A" size="large" />
+                    </View>
+                ) : (
+                    <ScrollView 
+                        className="flex-1"
+                        showsVerticalScrollIndicator={false}
+                        contentContainerStyle={{ paddingBottom: 100 }}
+                        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#C8842A" />}
+                    >
+                        {filteredLogs.length > 0 ? (
+                            filteredLogs.map((log, index) => <LogCard key={log.id} log={log} index={index} />)
+                        ) : (
+                            <View className="items-center justify-center py-24">
+                                <FileText size={48} color="#1e293b" strokeWidth={1} />
+                                <Text className="text-slate-500 text-base font-medium mt-4 italic">Aucun document archivé</Text>
                             </View>
-                            <TouchableOpacity onPress={() => setRejectModal({ visible: false, logId: null })}>
-                                <X size={22} color="#64748B" />
+                        )}
+                    </ScrollView>
+                )}
+            </View>
+
+            {/* Reject Modal */}
+            {rejectModal.visible && (
+                <View className="absolute inset-0 bg-black/80 justify-end z-50">
+                    <Animated.View 
+                        entering={FadeInUp} 
+                        className="bg-slate-950 rounded-t-[40px] p-8 border-t border-white/10"
+                        style={{ paddingBottom: Math.max(insets.bottom, 20) }}
+                    >
+                        <View className="flex-row justify-between items-center mb-6">
+                            <View>
+                                <Text className="text-white text-2xl font-black tracking-tight">Contre-visite</Text>
+                                <Text className="text-red-500 text-[10px] font-black uppercase tracking-widest mt-1">Éléments non conformes</Text>
+                            </View>
+                            <TouchableOpacity 
+                                onPress={() => setRejectModal({ visible: false, logId: null })}
+                                className="w-10 h-10 bg-white/5 rounded-full items-center justify-center border border-white/5"
+                            >
+                                <X size={20} color="#64748B" />
                             </TouchableOpacity>
                         </View>
-                        <Text className="text-slate-400 text-sm mb-4">
-                            Détaillez les éléments non conformes observés lors de votre contre-visite. Ces notes seront visibles par le Chef d'équipe.
-                        </Text>
-                        <TextInput
-                            className="bg-slate-900 border border-slate-700 rounded-2xl p-4 text-white text-sm min-h-[130px] mb-6"
-                            placeholder="Ex: Les fondations de la section B ne respectent pas la profondeur requise (1.5m vs 1.2m constaté)..."
-                            placeholderTextColor="#475569"
-                            multiline
-                            textAlignVertical="top"
-                            value={counterNotes}
-                            onChangeText={setCounterNotes}
-                        />
-                        <Button
+                        
+                        <View className="bg-white/5 border border-white/5 rounded-[28px] p-5 mb-8 min-h-[160px]">
+                            <TextInput
+                                className="text-white text-[15px] font-medium leading-6"
+                                placeholder="Détaillez les correctifs nécessaires..."
+                                placeholderTextColor="#334155"
+                                multiline
+                                textAlignVertical="top"
+                                value={counterNotes}
+                                onChangeText={setCounterNotes}
+                            />
+                        </View>
+
+                        <TouchableOpacity
                             onPress={handleReject}
-                            loading={actionLoading}
-                            className="bg-red-500 h-14 rounded-2xl"
-                            textClassName="text-white font-bold"
+                            disabled={actionLoading}
+                            activeOpacity={0.8}
                         >
-                            CONFIRMER LE REJET
-                        </Button>
-                    </View>
+                            <LinearGradient
+                                colors={['#EF4444', '#B91C1C']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 1 }}
+                                style={{ height: 64, borderRadius: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
+                            >
+                                {actionLoading ? (
+                                    <ActivityIndicator color="white" />
+                                ) : (
+                                    <>
+                                        <XCircle color="white" size={24} strokeWidth={3} className="mr-3" />
+                                        <Text className="text-white font-black text-lg uppercase tracking-tight">Confirmer le Rejet</Text>
+                                    </>
+                                )}
+                            </LinearGradient>
+                        </TouchableOpacity>
+                    </Animated.View>
                 </View>
-            </Modal>
+            )}
         </View>
     );
 }
+
+const styles = StyleSheet.create({});

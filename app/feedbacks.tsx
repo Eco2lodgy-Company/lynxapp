@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, RefreshControl, Image, Modal, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, RefreshControl, Image, Modal, TouchableOpacity, ActivityIndicator, StyleSheet, Platform } from 'react-native';
 import api, { ASSET_BASE_URL } from '../lib/api';
-import { Camera, MapPin, Search, X } from 'lucide-react-native';
+import { Camera, MapPin, Search, X, Maximize2 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Input } from '../components/ui/Input';
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
+import Animated, { FadeIn, FadeInDown, ZoomIn } from 'react-native-reanimated';
 
 export default function FeedbacksScreen() {
     const [refreshing, setRefreshing] = useState(false);
@@ -40,60 +43,89 @@ export default function FeedbacksScreen() {
     );
 
     return (
-        <View className="flex-1 bg-slate-900" style={{ paddingTop: Math.max(insets.top, 24) }}>
-            <View className="px-5 mb-5">
-                <Text className="text-primary text-[10px] font-bold uppercase tracking-widest mb-1">Espace Client</Text>
-                <Text className="text-white text-3xl font-black tracking-tight mb-1">Galerie</Text>
-                <Text className="text-slate-400 text-sm">Photos validées de vos chantiers</Text>
+        <View className="flex-1 bg-slate-950">
+            <LinearGradient
+                colors={['#1e293b', '#0f172a', '#020617']}
+                style={StyleSheet.absoluteFill}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+            />
+
+            <View className="px-5 mb-10" style={{ paddingTop: Math.max(insets.top, 24) }}>
+                <Text className="text-slate-500 text-[10px] font-black uppercase tracking-[4px] mb-1">Espace Client & Qualité</Text>
+                <Text className="text-white text-4xl font-black tracking-tight mb-2">Galerie</Text>
+                <Text className="text-slate-400 text-sm font-medium">L'avancement de vos projets en images</Text>
             </View>
 
-            <View className="px-5 mb-6">
+            <View className="px-5 mb-10">
                 <Input 
-                    placeholder="Rechercher une photo, projet..." 
+                    placeholder="Filtrer par projet ou mot-clé..." 
                     value={search}
                     onChangeText={setSearch}
-                    icon={<Search size={20} color="#64748B" />}
+                    icon={<Search size={22} color="#C8842A" strokeWidth={2.5} />}
                 />
             </View>
 
             {loading ? (
                 <View className="flex-1 items-center justify-center">
-                    <ActivityIndicator color="#22C55E" size="large" />
+                    <ActivityIndicator color="#C8842A" size="large" />
                 </View>
             ) : (
                 <ScrollView
                     className="flex-1 px-5"
-                    contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 24) }}
-                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#22C55E" />}
+                    contentContainerStyle={{ paddingBottom: 120 }}
+                    refreshControl={
+                        <RefreshControl 
+                            refreshing={refreshing} 
+                            onRefresh={onRefresh} 
+                            tintColor="#C8842A" 
+                            colors={['#C8842A']} 
+                        />
+                    }
                     showsVerticalScrollIndicator={false}
                 >
                     {filteredPhotos.length === 0 ? (
-                        <View className="items-center justify-center py-20">
-                            <View className="w-16 h-16 bg-slate-800 rounded-full items-center justify-center mb-4">
-                                <Camera size={32} color="#475569" />
+                        <Animated.View entering={FadeIn.delay(300)} className="items-center justify-center py-20">
+                            <View className="w-24 h-24 bg-slate-900 rounded-[35px] items-center justify-center mb-6 border border-white/5">
+                                <Camera size={48} color="#1e293b" strokeWidth={1.5} />
                             </View>
-                            <Text className="text-white font-bold text-lg mb-2">Aucune photo</Text>
-                            <Text className="text-slate-400 text-center">Les photos validées apparaîtront ici.</Text>
-                        </View>
+                            <Text className="text-white font-black text-xl mb-2">Album vide</Text>
+                            <Text className="text-slate-500 text-center text-sm font-medium">Les visuels validés apparaîtront automatiquement ici.</Text>
+                        </Animated.View>
                     ) : (
                         <View className="flex-row flex-wrap justify-between">
-                            {filteredPhotos.map((photo) => (
-                                <TouchableOpacity 
+                            {filteredPhotos.map((photo, idx) => (
+                                <Animated.View 
                                     key={photo.id}
-                                    onPress={() => setLightbox(photo)}
-                                    className="w-[48%] aspect-square bg-slate-800 rounded-2xl overflow-hidden mb-4 border border-slate-700/50"
-                                    activeOpacity={0.8}
+                                    entering={FadeInDown.delay(idx * 50).springify()}
+                                    className="w-[48%] mb-4"
                                 >
-                                    {/* Using standard URL construction assuming valid URLs returned */}
-                                    <Image 
-                                        source={{ uri: photo.url.startsWith('http') ? photo.url : `${ASSET_BASE_URL}${photo.url}` }} 
-                                        className="w-full h-full"
-                                        resizeMode="cover"
-                                    />
-                                    <View className="absolute inset-0 bg-black/40 justify-end p-3">
-                                        <Text className="text-white font-bold text-xs" numberOfLines={1}>{photo.project?.name}</Text>
-                                    </View>
-                                </TouchableOpacity>
+                                    <TouchableOpacity 
+                                        onPress={() => setLightbox(photo)}
+                                        className="aspect-[4/5] bg-slate-900 rounded-[28px] overflow-hidden border border-white/5 shadow-2xl"
+                                        activeOpacity={0.9}
+                                    >
+                                        <Image 
+                                            source={{ uri: photo.url.startsWith('http') ? photo.url : `${ASSET_BASE_URL}${photo.url}` }} 
+                                            className="w-full h-full"
+                                            resizeMode="cover"
+                                        />
+                                        <LinearGradient
+                                            colors={['transparent', 'rgba(2, 6, 23, 0.9)']}
+                                            className="absolute inset-0 justify-end p-4"
+                                        >
+                                            <View className="flex-row items-center justify-between">
+                                                <View className="flex-1 mr-2">
+                                                    <Text className="text-white font-black text-[10px] uppercase tracking-wider" numberOfLines={1}>{photo.project?.name}</Text>
+                                                    <Text className="text-primary text-[8px] font-black uppercase tracking-widest mt-0.5">LVL 0{idx +1}</Text>
+                                                </View>
+                                                <View className="w-6 h-6 bg-white/10 rounded-lg items-center justify-center backdrop-blur-md">
+                                                    <Maximize2 size={12} color="#FFF" />
+                                                </View>
+                                            </View>
+                                        </LinearGradient>
+                                    </TouchableOpacity>
+                                </Animated.View>
                             ))}
                         </View>
                     )}
@@ -107,44 +139,53 @@ export default function FeedbacksScreen() {
                 visible={!!lightbox}
                 onRequestClose={() => setLightbox(null)}
             >
-                <View className="flex-1 bg-black justify-center items-center">
-                    <TouchableOpacity 
-                        className="absolute top-12 right-6 z-50 p-2 bg-slate-800/80 rounded-full"
-                        onPress={() => setLightbox(null)}
-                    >
-                        <X color="#FFF" size={24} />
-                    </TouchableOpacity>
+                <BlurView intensity={Platform.OS === 'ios' ? 95 : 100} tint="dark" style={StyleSheet.absoluteFill}>
+                    <View className="flex-1 justify-center items-center px-6">
+                        <TouchableOpacity 
+                            className="absolute top-16 right-8 z-50 w-12 h-12 bg-white/10 rounded-2xl items-center justify-center border border-white/10"
+                            onPress={() => setLightbox(null)}
+                        >
+                            <X color="#FFF" size={24} strokeWidth={2.5} />
+                        </TouchableOpacity>
 
-                    {lightbox && (
-                        <View className="w-full h-full max-h-[80%] justify-center px-4">
-                            <Image 
-                                source={{ uri: lightbox.url.startsWith('http') ? lightbox.url : `${ASSET_BASE_URL}${lightbox.url}` }} 
-                                className="w-full h-[70%] rounded-xl"
-                                resizeMode="contain"
-                            />
-                            
-                            <View className="mt-6 bg-slate-900/80 p-5 rounded-2xl border border-slate-800">
-                                {lightbox.caption && (
-                                    <Text className="text-white text-base mb-3 leading-6">{lightbox.caption}</Text>
-                                )}
-                                <View className="flex-row justify-between items-center">
-                                    <View>
-                                        <Text className="text-primary font-bold">{lightbox.project?.name}</Text>
-                                        <Text className="text-slate-400 text-xs mt-1">
-                                            {new Date(lightbox.takenAt || lightbox.createdAt).toLocaleDateString()}
-                                        </Text>
+                        {lightbox && (
+                            <View className="w-full">
+                                <Animated.View entering={ZoomIn} className="aspect-[4/5] rounded-[40px] overflow-hidden shadow-2xl border border-white/10">
+                                    <Image 
+                                        source={{ uri: lightbox.url.startsWith('http') ? lightbox.url : `${ASSET_BASE_URL}${lightbox.url}` }} 
+                                        className="w-full h-full"
+                                        resizeMode="cover"
+                                    />
+                                </Animated.View>
+                                
+                                <Animated.View entering={FadeInDown.delay(200)} className="mt-8 bg-slate-900/50 p-8 rounded-[40px] border border-white/5">
+                                    {lightbox.caption && (
+                                        <Text className="text-white text-xl font-medium mb-6 leading-8 tracking-tight">{lightbox.caption}</Text>
+                                    )}
+                                    <View className="flex-row justify-between items-center">
+                                        <View>
+                                            <View className="flex-row items-center mb-1">
+                                                <View className="w-2 h-2 rounded-full bg-primary mr-2" />
+                                                <Text className="text-white font-black text-lg tracking-tighter">{lightbox.project?.name}</Text>
+                                            </View>
+                                            <Text className="text-slate-500 text-[10px] font-black uppercase tracking-[3px] mt-1 ml-4">
+                                                {new Date(lightbox.takenAt || lightbox.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                            </Text>
+                                        </View>
+                                        <View className="bg-primary/10 px-5 py-3 rounded-2xl border border-primary/20">
+                                            <Text className="text-primary text-[10px] font-black uppercase tracking-widest">
+                                                {lightbox.source === 'REPORT' ? 'Rapport Pro' : 'Media Client'}
+                                            </Text>
+                                        </View>
                                     </View>
-                                    <View className="bg-slate-800 px-3 py-1.5 rounded-full border border-slate-700">
-                                        <Text className="text-slate-300 text-[10px] font-bold uppercase tracking-wider">
-                                            {lightbox.source === 'REPORT' ? 'Rapport' : 'Message'}
-                                        </Text>
-                                    </View>
-                                </View>
+                                </Animated.View>
                             </View>
-                        </View>
-                    )}
-                </View>
+                        )}
+                    </View>
+                </BlurView>
             </Modal>
         </View>
     );
 }
+
+const styles = StyleSheet.create({});

@@ -6,6 +6,10 @@ import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
 import { useAuth } from "../context/AuthContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
+import { PremiumCard } from "../components/ui/PremiumCard";
+import Animated, { FadeInDown, FadeInUp, FadeIn } from "react-native-reanimated";
+import { ActivityIndicator, StyleSheet, TouchableOpacity } from "react-native";
 
 export default function LoginScreen() {
     const { login } = useAuth();
@@ -36,9 +40,16 @@ export default function LoginScreen() {
     return (
         <KeyboardAvoidingView
             behavior={Platform.OS === "ios" ? "padding" : "height"}
-            className="flex-1 bg-bg-dark"
+            className="flex-1 bg-slate-950"
         >
             <StatusBar style="light" />
+            <LinearGradient
+                colors={['#1e293b', '#0f172a', '#020617']}
+                style={StyleSheet.absoluteFill}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+            />
+            
             <ScrollView
                 className="flex-1 px-6"
                 contentContainerStyle={{ 
@@ -47,69 +58,94 @@ export default function LoginScreen() {
                     paddingTop: Math.max(insets.top, 24),
                     paddingBottom: Math.max(insets.bottom, 24)
                 }}
+                showsVerticalScrollIndicator={false}
             >
                 {/* Branding Section */}
-                <View className="items-center mb-12">
-                    <View className="w-32 h-32 mb-6 drop-shadow-2xl">
-                        <Image 
-                            source={require("../assets/logo-lynx.png")}
-                            className="w-full h-full"
-                            resizeMode="contain"
-                        />
+                <Animated.View entering={FadeInDown.duration(1000).springify()} className="items-center mb-16">
+                    <View className="relative shadow-2xl shadow-primary/20">
+                        <View className="w-36 h-36 bg-slate-900 rounded-[45px] p-8 border-2 border-primary/20 items-center justify-center">
+                            <Image 
+                                source={require("../assets/logo-lynx.png")}
+                                className="w-full h-full"
+                                resizeMode="contain"
+                            />
+                        </View>
+                        <View className="absolute -top-2 -left-2 w-8 h-8 rounded-2xl border-4 border-slate-950 bg-primary/40 items-center justify-center">
+                            <View className="w-2 h-2 bg-primary rounded-full" />
+                        </View>
                     </View>
-                    <View className="bg-slate-800/50 px-3 py-1 rounded-full border border-white/5">
-                        <Text className="text-[10px] text-slate-400 font-bold uppercase tracking-[3px]">
-                            ECOTECH Platform
-                        </Text>
-                    </View>
-                </View>
+                    
+                    <Animated.View entering={FadeIn.delay(600)} className="mt-8 items-center">
+                        <Text className="text-slate-500 text-[10px] font-black uppercase tracking-[6px] mb-2">LYNX MANAGEMENT</Text>
+                        <Text className="text-white text-base font-bold tracking-[2px]">Système de Pilotage Elite</Text>
+                    </Animated.View>
+                </Animated.View>
 
                 {/* Form Section */}
-                <View className="bg-slate-800/80 border border-slate-700/50 rounded-[40px] p-8 shadow-2xl">
-                    <View className="mb-8">
-                        <Text className="text-2xl font-bold text-white mb-2">Bon retour</Text>
-                        <Text className="text-slate-400 text-sm leading-5">Connectez-vous pour accéder à vos chantiers et rapports.</Text>
+                <PremiumCard index={1} delay={200} style={{ padding: 32 }} glass={true}>
+                    <View className="mb-10">
+                        <Text className="text-white text-3xl font-black tracking-tight mb-2">Connexion</Text>
+                        <Text className="text-slate-400 text-sm font-medium leading-5">Accédez à votre espace sécurisé pour piloter vos opérations.</Text>
                     </View>
 
                     {error && (
-                        <View className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-xl">
-                            <Text className="text-red-400 text-sm">{error}</Text>
-                        </View>
+                        <Animated.View entering={FadeIn} className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl">
+                            <Text className="text-red-400 text-xs font-bold uppercase tracking-wider">{error}</Text>
+                        </Animated.View>
                     )}
 
-                    <Input
-                        label="Adresse email"
-                        placeholder="jean.dupont@ecotech.fr"
-                        value={email}
-                        onChangeText={setEmail}
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                        autoCorrect={false}
-                    />
+                    <View className="space-y-6">
+                        <Input
+                            label="ADRESSE EMAIL PROFESSIONNELLE"
+                            placeholder="votre.nom@ecotech.fr"
+                            value={email}
+                            onChangeText={setEmail}
+                            keyboardType="email-address"
+                            autoCapitalize="none"
+                            autoCorrect={false}
+                            className="bg-slate-950/50 h-14"
+                        />
 
-                    <Input
-                        label="Mot de passe"
-                        placeholder="••••••••"
-                        value={password}
-                        onChangeText={setPassword}
-                        secureTextEntry
-                    />
+                        <Input
+                            label="MOT DE PASSE"
+                            placeholder="••••••••"
+                            value={password}
+                            onChangeText={setPassword}
+                            secureTextEntry
+                            className="bg-slate-950/50 h-14"
+                        />
+                    </View>
 
-                    <Button
+                    <TouchableOpacity
                         onPress={handleLogin}
-                        loading={loading}
-                        className="mt-4"
+                        disabled={loading}
+                        activeOpacity={0.8}
+                        className="mt-8"
                     >
-                        Se connecter
-                    </Button>
-                </View>
+                        <LinearGradient
+                            colors={['#C8842A', '#926220']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={{ height: 64, borderRadius: 20, alignItems: 'center', justifyContent: 'center' }}
+                        >
+                            {loading ? (
+                                <ActivityIndicator color="#0F172A" />
+                            ) : (
+                                <Text className="text-slate-950 font-black text-lg uppercase tracking-tight">Accéder au Dashboard</Text>
+                            )}
+                        </LinearGradient>
+                    </TouchableOpacity>
+                </PremiumCard>
 
                 {/* Footer */}
-                <View className="items-center mt-12">
-                    <Text className="text-xs text-slate-500">
-                        © {new Date().getFullYear()} ECOTECH. Tous droits réservés.
+                <Animated.View entering={FadeIn.delay(1200)} className="items-center mt-16 pb-8">
+                    <Text className="text-slate-600 text-[10px] font-bold tracking-[2px] uppercase">
+                        Part of ECOTECH Ecosystem
                     </Text>
-                </View>
+                    <Text className="text-slate-700 text-[9px] mt-2 font-medium">
+                        © {new Date().getFullYear()} LYNX Corp. All rights reserved.
+                    </Text>
+                </Animated.View>
             </ScrollView>
         </KeyboardAvoidingView>
     );

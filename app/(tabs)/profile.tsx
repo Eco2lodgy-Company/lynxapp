@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Image, StyleSheet, Platform } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { 
     User, 
@@ -12,112 +12,155 @@ import {
 } from 'lucide-react-native';
 import { Button } from '../../components/ui/Button';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
+import { PremiumCard } from '../../components/ui/PremiumCard';
+import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
 
 export default function ProfileScreen() {
     const { user, logout } = useAuth();
     const insets = useSafeAreaInsets();
 
-    const MenuButton = ({ icon: Icon, title, subtitle, color, onPress }: any) => (
-        <TouchableOpacity 
-            className="flex-row items-center justify-between bg-slate-800/50 p-4 rounded-2xl border border-slate-700/50 mb-3"
-            onPress={onPress}
-            activeOpacity={0.7}
+    const MenuButton = ({ icon: Icon, title, subtitle, color, onPress, index }: any) => (
+        <PremiumCard 
+            index={index} 
+            style={{ padding: 12, marginBottom: 12 }}
+            glass={true}
         >
-            <View className="flex-row items-center">
-                <View className={`w-10 h-10 rounded-xl items-center justify-center mr-4 ${color} bg-opacity-20`}>
-                    <Icon size={20} color={color.replace('bg-', '#')} />
+            <TouchableOpacity 
+                className="flex-row items-center justify-between"
+                onPress={onPress}
+                activeOpacity={0.6}
+            >
+                <View className="flex-row items-center">
+                    <View className="w-12 h-12 rounded-2xl items-center justify-center mr-4" style={{ backgroundColor: color + '15' }}>
+                        <Icon size={22} color={color} strokeWidth={2} />
+                    </View>
+                    <View>
+                        <Text className="text-white font-bold text-base tracking-tight">{title}</Text>
+                        {subtitle && <Text className="text-slate-400 text-[11px] font-medium mt-0.5">{subtitle}</Text>}
+                    </View>
                 </View>
-                <View>
-                    <Text className="text-white font-semibold">{title}</Text>
-                    {subtitle && <Text className="text-slate-400 text-xs">{subtitle}</Text>}
+                <View className="bg-slate-800/50 p-2 rounded-xl border border-slate-700/50">
+                    <ChevronRight color="#C8842A" size={16} strokeWidth={3} />
                 </View>
-            </View>
-            <ChevronRight color="#475569" size={20} />
-        </TouchableOpacity>
+            </TouchableOpacity>
+        </PremiumCard>
     );
 
     return (
-        <ScrollView 
-            className="flex-1 bg-slate-900" 
-            contentContainerStyle={{ 
-                padding: 20, 
-                paddingTop: Math.max(insets.top, 24),
-                paddingBottom: Math.max(insets.bottom, 80)
-            }}
-        >
-            <View className="items-center mb-8">
-                <View className="relative">
-                    <View className="w-24 h-24 bg-slate-800 rounded-3xl border-2 border-primary/30 items-center justify-center overflow-hidden shadow-xl shadow-black">
-                        {user?.image ? (
-                            <Image source={{ uri: user.image }} className="w-full h-full" />
-                        ) : (
-                            <User size={48} color="#C8842A" />
-                        )}
-                    </View>
-                    <View className="absolute -bottom-1 -right-1 bg-primary w-6 h-6 rounded-full border-2 border-slate-900 items-center justify-center shadow-sm">
-                        <View className="w-2 h-2 bg-slate-900 rounded-full" />
-                    </View>
-                </View>
-                <Text className="text-white text-2xl font-bold mt-4">{user?.name}</Text>
-                <Text className="text-slate-400 text-sm">{user?.role}</Text>
-            </View>
-
-            <View className="bg-slate-800/80 rounded-3xl p-5 border border-slate-700 mb-8">
-                <View className="flex-row items-center mb-4">
-                    <Mail size={16} color="#94A3B8" />
-                    <Text className="text-slate-300 ml-3">{user?.email}</Text>
-                </View>
-                <View className="flex-row items-center">
-                    <Shield size={16} color="#94A3B8" />
-                    <Text className="text-slate-300 ml-3">ID: {user?.id?.substring(0, 8)}...</Text>
-                </View>
-            </View>
-
-            <View className="mb-8">
-                <Text className="text-slate-500 text-xs font-bold uppercase tracking-widest mb-4 ml-2">Paramètres</Text>
-                
-                <MenuButton 
-                    icon={Bell} 
-                    title="Notifications" 
-                    subtitle="Gérer vos alertes et rappels"
-                    color="#3B82F6"
-                />
-                <MenuButton 
-                    icon={Shield} 
-                    title="Sécurité" 
-                    subtitle="Mot de passe et biométrie"
-                    color="#A855F7"
-                />
-                <MenuButton 
-                    icon={Settings} 
-                    title="Préférences" 
-                    subtitle="Langue, Thème et Affichage"
-                    color="#64748B"
-                />
-            </View>
-
-            <Button 
-                variant="danger" 
-                onPress={logout}
-                className="mt-4 rounded-2xl h-14"
+        <View className="flex-1 bg-slate-950">
+            <LinearGradient
+                colors={['#1e293b', '#0f172a', '#020617']}
+                style={StyleSheet.absoluteFill}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+            />
+            
+            <ScrollView 
+                className="flex-1" 
+                contentContainerStyle={{ 
+                    padding: 20, 
+                    paddingTop: Math.max(insets.top, 24),
+                    paddingBottom: Math.max(insets.bottom, 120)
+                }}
             >
-                <View className="flex-row items-center justify-center">
-                    <LogOut size={20} color="white" />
-                    <Text className="text-white font-bold ml-2">Déconnexion</Text>
+                <Animated.View entering={FadeInDown.duration(800)} className="items-center mb-10">
+                    <View className="relative">
+                        <View className="w-28 h-28 bg-slate-800 rounded-[35px] border-2 border-primary/40 items-center justify-center overflow-hidden shadow-2xl shadow-primary/20">
+                            {user?.image ? (
+                                <Image source={{ uri: user.image }} className="w-full h-full" />
+                            ) : (
+                                <View className="bg-slate-900 w-full h-full items-center justify-center">
+                                    <User size={56} color="#C8842A" strokeWidth={1.5} />
+                                </View>
+                            )}
+                        </View>
+                        <View className="absolute -bottom-2 -right-2 bg-primary w-8 h-8 rounded-2xl border-4 border-slate-950 items-center justify-center shadow-lg">
+                            <View className="w-2.5 h-2.5 bg-slate-950 rounded-full" />
+                        </View>
+                    </View>
+                    <Text className="text-white text-3xl font-black mt-6 tracking-tight">{user?.name}</Text>
+                    <View className="bg-primary/10 px-4 py-1.5 rounded-full border border-primary/20 mt-2">
+                        <Text className="text-primary text-[10px] font-black uppercase tracking-[2px]">{user?.role}</Text>
+                    </View>
+                </Animated.View>
+
+                <PremiumCard index={1} style={{ padding: 16, marginBottom: 32 }}>
+                    <View className="flex-row items-center mb-5">
+                        <View className="w-8 h-8 rounded-lg bg-slate-900 items-center justify-center mr-4">
+                            <Mail size={16} color="#94A3B8" />
+                        </View>
+                        <Text className="text-slate-200 font-medium">{user?.email}</Text>
+                    </View>
+                    <View className="flex-row items-center">
+                        <View className="w-8 h-8 rounded-lg bg-slate-900 items-center justify-center mr-4">
+                            <Shield size={16} color="#94A3B8" />
+                        </View>
+                        <View>
+                            <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Identifiant Utilisateur</Text>
+                            <Text className="text-slate-200 font-mono text-xs">{user?.id?.substring(0, 12)}...</Text>
+                        </View>
+                    </View>
+                </PremiumCard>
+
+                <View className="mb-10">
+                    <Animated.Text 
+                        entering={FadeIn.delay(600)}
+                        className="text-slate-500 text-[10px] font-black uppercase tracking-[3px] mb-6 ml-1"
+                    >
+                        Préférences Système
+                    </Animated.Text>
+                    
+                    <MenuButton 
+                        index={2}
+                        icon={Bell} 
+                        title="Notifications" 
+                        subtitle="Gérer les alertes et communications"
+                        color="#3B82F6"
+                    />
+                    <MenuButton 
+                        index={3}
+                        icon={Shield} 
+                        title="Sécurité & Accès" 
+                        subtitle="Confidentialité et authentification"
+                        color="#A855F7"
+                    />
+                    <MenuButton 
+                        index={4}
+                        icon={Settings} 
+                        title="Réglages" 
+                        subtitle="Interface et paramètres globaux"
+                        color="#64748B"
+                    />
                 </View>
-            </Button>
 
-            <View className="items-center mt-8">
-                <Image 
-                    source={require("../../assets/logo-lynx.png")}
-                    className="w-12 h-12 mb-2 opacity-30"
-                    resizeMode="contain"
-                />
-                <Text className="text-slate-500 text-xs">LYNX Mobile v1.0.0</Text>
-                <Text className="text-slate-500 text-[10px] mt-1">ECOTECH © 2026</Text>
-            </View>
+                <TouchableOpacity 
+                    onPress={logout}
+                    activeOpacity={0.8}
+                >
+                    <LinearGradient
+                        colors={['#EF4444', '#991B1B']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={{ borderRadius: 20, height: 60, alignItems: 'center', justifyContent: 'center' }}
+                    >
+                        <View className="flex-row items-center">
+                            <LogOut size={20} color="white" strokeWidth={2.5} />
+                            <Text className="text-white font-black ml-3 text-base tracking-tight uppercase">Déconnexion</Text>
+                        </View>
+                    </LinearGradient>
+                </TouchableOpacity>
 
-            <View className="h-20" />
-        </ScrollView>
+                <Animated.View entering={FadeIn.delay(1000)} className="items-center mt-12 mb-8 opacity-40">
+                    <Image 
+                        source={require("../../assets/logo-lynx.png")}
+                        className="w-10 h-10 mb-3"
+                        resizeMode="contain"
+                    />
+                    <Text className="text-slate-500 text-[10px] font-bold tracking-widest uppercase">LYNX Mobile Elite v1.2.0</Text>
+                    <Text className="text-slate-500 text-[9px] mt-1 font-medium">ECOTECH PRODUCTIONS © 2026</Text>
+                </Animated.View>
+            </ScrollView>
+        </View>
     );
 }

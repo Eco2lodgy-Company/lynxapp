@@ -1,14 +1,17 @@
 import React, { useEffect, useState, useRef } from 'react';
 import {
     View, Text, ScrollView, TextInput, TouchableOpacity,
-    KeyboardAvoidingView, Platform, ActivityIndicator, Alert, Image
+    KeyboardAvoidingView, Platform, ActivityIndicator, Alert, Image, StyleSheet
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import api from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
-import { ChevronLeft, Send, Paperclip, Camera } from 'lucide-react-native';
+import { ChevronLeft, Send, Paperclip, Camera, MapPin, Clock, MoreVertical, X } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
+import Animated, { FadeIn, FadeInDown, SlideInRight, Layout } from 'react-native-reanimated';
 
 export default function ConversationScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
@@ -38,14 +41,12 @@ export default function ConversationScreen() {
 
     useEffect(() => {
         fetchMessages();
-        // Poll for new messages every 5 seconds
         const interval = setInterval(fetchMessages, 5000);
         return () => clearInterval(interval);
     }, [id]);
 
     useEffect(() => {
-        // Scroll to bottom when messages load
-        setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+        setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 300);
     }, [messages.length]);
 
     const sendMessage = async () => {
@@ -55,8 +56,6 @@ export default function ConversationScreen() {
         setText('');
         try {
             let uploadedUrls: string[] = [];
-            
-            // Upload attachments first
             for (const att of attachments) {
                 const formData = new FormData();
                 formData.append('file', {
@@ -78,11 +77,11 @@ export default function ConversationScreen() {
                 content: messageText,
                 attachments: uploadedUrls,
             });
-            setAttachments([]); // Clear attachments on success
+            setAttachments([]);
             fetchMessages();
         } catch (err: any) {
             Alert.alert('Erreur', err.response?.data?.error || 'Impossible d\'envoyer le message');
-            setText(messageText); // Restore on failure
+            setText(messageText);
         } finally {
             setSending(false);
         }
@@ -95,18 +94,18 @@ export default function ConversationScreen() {
                 : await ImagePicker.requestMediaLibraryPermissionsAsync();
             
             if (status !== 'granted') {
-                Alert.alert('Permission requise', 'Nous avons besoin d\'accéder à votre caméra ou galerie.');
+                Alert.alert('Permission requise', 'Accès caméra/galerie nécessaire.');
                 return;
             }
 
             const result = useCamera 
                 ? await ImagePicker.launchCameraAsync({
-                    mediaTypes: ['images', 'videos'],
+                    mediaTypes: ImagePicker.MediaTypeOptions.All,
                     allowsEditing: true,
                     quality: 0.8,
                   })
                 : await ImagePicker.launchImageLibraryAsync({
-                    mediaTypes: ['images', 'videos'],
+                    mediaTypes: ImagePicker.MediaTypeOptions.All,
                     allowsEditing: true,
                     quality: 0.8,
                   });
@@ -116,22 +115,20 @@ export default function ConversationScreen() {
                 const uri = asset.uri;
                 const type = asset.type === 'video' ? 'video/mp4' : 'image/jpeg';
                 const name = uri.split('/').pop() || `media-${Date.now()}`;
-                
                 setAttachments(prev => [...prev, { uri, type, name }]);
             }
         } catch (error) {
             console.error('Error picking media:', error);
-            Alert.alert('Erreur', 'Impossible de charger le média.');
         }
     };
 
     const handleAttachPhoto = () => {
         Alert.alert(
-            'Joindre un fichier',
-            'Choisissez une option',
+            'Joindre un média',
+            'Sélecteur de fichiers LYNX',
             [
-                { text: 'Prendre une photo/vidéo', onPress: () => pickMedia(true) },
-                { text: 'Galerie', onPress: () => pickMedia(false) },
+                { text: 'Appareil Photo', onPress: () => pickMedia(true) },
+                { text: 'Bibliothèque', onPress: () => pickMedia(false) },
                 { text: 'Annuler', style: 'cancel' },
             ]
         );
@@ -150,7 +147,6 @@ export default function ConversationScreen() {
         return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
     };
 
-    // Group messages by date
     const groupedMessages: { date: string; items: any[] }[] = [];
     let lastDate = '';
     for (const msg of messages) {
@@ -169,84 +165,113 @@ export default function ConversationScreen() {
 
     return (
         <KeyboardAvoidingView
-            className="flex-1 bg-slate-900"
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={{ flex: 1 }}
+            className="flex-1 bg-slate-950"
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            keyboardVerticalOffset={0}
         >
+            <LinearGradient
+                colors={['#1e293b', '#0f172a', '#020617']}
+                style={StyleSheet.absoluteFill}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+            />
+
             {/* Header */}
-            <View
-                className="flex-row items-center px-4 py-3 border-b border-slate-800 bg-slate-900"
-                style={{ paddingTop: Math.max(insets.top, 16) }}
-            >
-                <TouchableOpacity onPress={() => router.back()} className="mr-3 bg-slate-800 p-2 rounded-full">
-                    <ChevronLeft size={20} color="#FFF" />
-                </TouchableOpacity>
-                <View className="flex-1">
-                    <Text className="text-white font-bold text-base" numberOfLines={1}>{displayName}</Text>
-                    {conversation?.project && (
-                        <Text className="text-primary text-xs mt-0.5">📍 {conversation.project.name}</Text>
-                    )}
+            <BlurView intensity={Platform.OS === 'ios' ? 80 : 100} tint="dark" style={{ paddingTop: insets.top }}>
+                <View className="flex-row items-center px-5 py-4 border-b border-white/5">
+                    <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 bg-white/5 rounded-xl items-center justify-center border border-white/5 mr-4">
+                        <ChevronLeft size={22} color="#C8842A" strokeWidth={2.5} />
+                    </TouchableOpacity>
+                    <View className="flex-1">
+                        <Text className="text-white font-black text-lg tracking-tight" numberOfLines={1}>{displayName}</Text>
+                        <View className="flex-row items-center mt-0.5">
+                            <View className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-2 shadow-sm shadow-emerald-500" />
+                            <Text className="text-slate-500 text-[10px] font-black uppercase tracking-widest" numberOfLines={1}>
+                                {conversation?.project ? conversation.project.name : 'Canal Sécurisé'}
+                            </Text>
+                        </View>
+                    </View>
+                    <TouchableOpacity className="w-10 h-10 bg-white/5 rounded-xl items-center justify-center border border-white/5">
+                        <MoreVertical size={20} color="#64748B" />
+                    </TouchableOpacity>
                 </View>
-            </View>
+            </BlurView>
 
             {/* Messages */}
             {loading ? (
                 <View className="flex-1 items-center justify-center">
-                    <ActivityIndicator color="#22C55E" size="large" />
+                    <ActivityIndicator color="#C8842A" size="large" />
                 </View>
             ) : (
                 <ScrollView
                     ref={scrollRef}
-                    className="flex-1 px-4"
-                    contentContainerStyle={{ paddingTop: 16, paddingBottom: 8 }}
+                    className="flex-1"
+                    contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 20 }}
                     showsVerticalScrollIndicator={false}
                 >
                     {groupedMessages.length === 0 ? (
-                        <View className="flex-1 items-center justify-center py-20">
-                            <Text className="text-slate-500 italic text-center">
-                                Aucun message pour l'instant.{'\n'}Commencez la discussion !
+                        <View className="flex-1 items-center justify-center py-24">
+                            <View className="w-20 h-20 bg-slate-900 rounded-[30px] items-center justify-center mb-6 border border-white/5">
+                                <Send size={32} color="#1e293b" strokeWidth={1.5} />
+                            </View>
+                            <Text className="text-slate-500 font-black text-xs uppercase tracking-[3px] text-center px-10">
+                                Début de la transmission
                             </Text>
                         </View>
                     ) : (
                         groupedMessages.map((group, gi) => (
                             <View key={gi}>
-                                {/* Date separator */}
-                                <View className="flex-row items-center my-4">
-                                    <View className="flex-1 h-px bg-slate-700/50" />
-                                    <Text className="text-slate-500 text-[11px] mx-3 font-medium">{group.date}</Text>
-                                    <View className="flex-1 h-px bg-slate-700/50" />
+                                <View className="flex-row items-center my-8">
+                                    <View className="flex-1 h-[1px] bg-white/5" />
+                                    <View className="bg-slate-900/80 px-4 py-1.5 rounded-full border border-white/5 mx-4">
+                                        <Text className="text-slate-500 text-[9px] font-black uppercase tracking-[2px]">{group.date}</Text>
+                                    </View>
+                                    <View className="flex-1 h-[1px] bg-white/5" />
                                 </View>
-                                {group.items.map((msg: any) => {
+                                {group.items.map((msg: any, idx: number) => {
                                     const isMe = msg.authorId === user?.id;
-                                    const hasAttachment = msg.attachments && JSON.parse(msg.attachments || '[]').length > 0;
-                                    const attachments = hasAttachment ? JSON.parse(msg.attachments) : [];
+                                    const attachments = msg.attachments ? (typeof msg.attachments === 'string' ? JSON.parse(msg.attachments) : msg.attachments) : [];
+                                    
                                     return (
-                                        <View key={msg.id} className={`mb-3 max-w-[82%] ${isMe ? 'self-end items-end' : 'self-start items-start'}`}>
+                                        <Animated.View 
+                                            key={msg.id} 
+                                            entering={FadeInDown.delay(idx * 50)}
+                                            layout={Layout.springify()}
+                                            className={`mb-6 max-w-[85%] ${isMe ? 'self-end items-end' : 'self-start items-start'}`}
+                                        >
                                             {!isMe && (
-                                                <Text className="text-slate-500 text-[10px] mb-1 ml-1">
+                                                <Text className="text-slate-500 text-[9px] font-black uppercase tracking-widest mb-1.5 ml-2">
                                                     {msg.author?.firstName} {msg.author?.lastName}
                                                 </Text>
                                             )}
-                                            <View className={`px-4 py-3 rounded-2xl ${isMe
-                                                ? 'bg-primary rounded-tr-sm'
-                                                : 'bg-slate-700/80 rounded-tl-sm border border-slate-600/30'
-                                            }`}>
-                                                {attachments.map((url: string, i: number) => (
-                                                    <Image
-                                                        key={i}
-                                                        source={{ uri: url }}
-                                                        className="w-40 h-40 rounded-xl mb-2"
-                                                        resizeMode="cover"
-                                                    />
-                                                ))}
-                                                <Text className={`text-sm leading-5 ${isMe ? 'text-slate-900 font-medium' : 'text-white'}`}>
-                                                    {msg.content}
-                                                </Text>
+                                            
+                                            <View className={`p-1 rounded-[28px] ${isMe ? 'bg-primary/10 border border-primary/20' : 'bg-slate-900/80 border border-white/5'}`}>
+                                                {attachments.length > 0 && (
+                                                    <View className="mb-1">
+                                                        {attachments.map((url: string, i: number) => (
+                                                            <Image
+                                                                key={i}
+                                                                source={{ uri: url }}
+                                                                className="w-64 h-64 rounded-[24px]"
+                                                                resizeMode="cover"
+                                                            />
+                                                        ))}
+                                                    </View>
+                                                )}
+                                                <View className="px-4 py-3">
+                                                    <Text className={`text-[15px] leading-6 font-medium ${isMe ? 'text-primary' : 'text-slate-200'}`}>
+                                                        {msg.content}
+                                                    </Text>
+                                                </View>
                                             </View>
-                                            <Text className="text-slate-600 text-[10px] mt-1 mx-1">
-                                                {formatTime(msg.createdAt)}
-                                            </Text>
-                                        </View>
+
+                                            <View className={`flex-row items-center mt-1.5 mx-2 ${isMe ? 'flex-row-reverse' : ''}`}>
+                                                <Text className="text-slate-600 text-[9px] font-black tracking-widest uppercase">
+                                                    {formatTime(msg.createdAt)}
+                                                </Text>
+                                                {isMe && <View className="w-1 h-1 rounded-full bg-primary mx-1.5 opacity-50" />}
+                                            </View>
+                                        </Animated.View>
                                     );
                                 })}
                             </View>
@@ -256,55 +281,58 @@ export default function ConversationScreen() {
             )}
 
             {/* Input Bar */}
-            <View
-                className="bg-slate-800 border-t border-slate-700"
-                style={{ paddingBottom: Math.max(insets.bottom, 12) }}
-            >
-                {/* Pending Attachments Preview */}
+            <BlurView intensity={Platform.OS === 'ios' ? 90 : 100} tint="dark" style={{ paddingBottom: Math.max(insets.bottom, 20) }}>
                 {attachments.length > 0 && (
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} className="px-4 py-2 border-b border-slate-700/50">
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} className="px-5 py-4 border-b border-white/5">
                         {attachments.map((att, i) => (
-                            <View key={i} className="mr-3 relative mt-2 mb-2">
-                                <Image source={{ uri: att.uri }} className="w-16 h-16 rounded-xl border border-slate-600" />
+                            <View key={i} className="mr-4 relative">
+                                <Image source={{ uri: att.uri }} className="w-20 h-20 rounded-2xl border border-white/10" />
                                 <TouchableOpacity 
                                     onPress={() => setAttachments(prev => prev.filter((_, idx) => idx !== i))}
-                                    className="absolute -top-2 -right-2 bg-red-500 rounded-full w-5 h-5 items-center justify-center border border-slate-800"
+                                    className="absolute -top-2 -right-2 bg-slate-950 rounded-full w-7 h-7 items-center justify-center border border-white/10 shadow-lg"
                                 >
-                                    <Text className="text-white text-[10px] font-bold">X</Text>
+                                    <X color="#EF4444" size={14} strokeWidth={3} />
                                 </TouchableOpacity>
                             </View>
                         ))}
                     </ScrollView>
                 )}
-                <View className="flex-row items-center px-4 py-3">
+                
+                <View className="px-5 py-5 flex-row items-center">
                     <TouchableOpacity
                         onPress={handleAttachPhoto}
-                        className="w-10 h-10 rounded-full bg-slate-700 items-center justify-center mr-2"
+                        className="w-12 h-12 rounded-2xl bg-white/5 items-center justify-center border border-white/5 mr-3"
                     >
-                        <Paperclip size={18} color="#94A3B8" />
+                        <Paperclip size={20} color="#C8842A" strokeWidth={2.5} />
                     </TouchableOpacity>
-                <TextInput
-                    className="flex-1 bg-slate-900 border border-slate-700 rounded-2xl px-4 py-2.5 text-white text-sm max-h-28"
-                    placeholder="Écrire un message..."
-                    placeholderTextColor="#475569"
-                    value={text}
-                    onChangeText={setText}
-                    multiline
-                    returnKeyType="default"
-                />
+
+                    <View className="flex-1 bg-white/5 border border-white/5 rounded-[24px] px-5 py-1 min-h-[52px] justify-center">
+                        <TextInput
+                            className="text-white text-[14px] font-medium py-2.5"
+                            placeholder="Message sécurisé..."
+                            placeholderTextColor="#334155"
+                            value={text}
+                            onChangeText={setText}
+                            multiline
+                            style={{ maxHeight: 100 }}
+                        />
+                    </View>
+
                     <TouchableOpacity
                         onPress={sendMessage}
                         disabled={sending || (!text.trim() && attachments.length === 0)}
-                        className={`w-10 h-10 rounded-full items-center justify-center ml-2 ${(text.trim() || attachments.length > 0) ? 'bg-primary' : 'bg-slate-700'}`}
+                        className={`w-12 h-12 rounded-2xl items-center justify-center ml-3 shadow-2xl ${(text.trim() || attachments.length > 0) ? 'bg-primary shadow-primary/30' : 'bg-white/5 border border-white/5'}`}
                     >
                         {sending ? (
                             <ActivityIndicator size="small" color="#0F172A" />
                         ) : (
-                            <Send size={17} color={(text.trim() || attachments.length > 0) ? '#0F172A' : '#475569'} />
+                            <Send size={20} color={(text.trim() || attachments.length > 0) ? '#0F172A' : '#334155'} strokeWidth={2.5} />
                         )}
                     </TouchableOpacity>
                 </View>
-            </View>
+            </BlurView>
         </KeyboardAvoidingView>
     );
 }
+
+const styles = StyleSheet.create({});
