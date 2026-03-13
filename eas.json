@@ -11,7 +11,9 @@
     "preview": {
       "distribution": "internal"
     },
-    "production": {}
+    "production": {
+      "image": "latest-2"
+    }
   },
   "submit": {
     "production": {}
