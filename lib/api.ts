@@ -1,9 +1,12 @@
 import axios from "axios";
 import * as SecureStore from "expo-secure-store";
 
-// Use the local IP address for development, as localhost won't work from an emulator/physical device
-// In production, this would be your VPS URL
-export const API_BASE_URL = "http://192.168.1.13:3000/lynx/api"; 
+// Production VPS — deployed at https://alphatek.fr/lynx
+// To run locally, change to: http://192.168.1.13:3000/lynx/api
+export const API_BASE_URL = "https://alphatek.fr/lynx/api";
+
+// Asset base URL (for uploaded photos/files)
+export const ASSET_BASE_URL = "https://alphatek.fr";
 
 const api = axios.create({
     baseURL: API_BASE_URL,

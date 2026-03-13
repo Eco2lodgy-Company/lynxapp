@@ -6,8 +6,11 @@ import {
     User, 
     Calendar,
     ChevronRight,
-    Search
+    Search,
+    Edit2,
+    CheckCircle
 } from 'lucide-react-native';
+import { useAuth } from '../../context/AuthContext';
 import { Input } from '../../components/ui/Input';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -17,6 +20,13 @@ export default function ProjectsScreen() {
     const [projects, setProjects] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
+    const { user } = useAuth();
+
+    // Edit logic
+    const [editModalVisible, setEditModalVisible] = useState(false);
+    const [editingProject, setEditingProject] = useState<any>(null);
+    const [newProgress, setNewProgress] = useState("");
+    const [saving, setSaving] = useState(false);
 
     const fetchProjects = async () => {
         try {
@@ -43,6 +53,25 @@ export default function ProjectsScreen() {
         p.name.toLowerCase().includes(search.toLowerCase()) ||
         p.address?.toLowerCase().includes(search.toLowerCase())
     );
+
+    const handleSaveProgress = async () => {
+        if (!editingProject) return;
+        setSaving(true);
+        try {
+            await api.put(`/projects/${editingProject.id}`, {
+                progress: parseInt(newProgress)
+            });
+            // Update local state temporarily
+            setProjects(prev => prev.map(p => 
+                p.id === editingProject.id ? { ...p, progress: parseInt(newProgress) } : p
+            ));
+            setEditModalVisible(false);
+        } catch (error) {
+            console.error('Error updating progress', error);
+        } finally {
+            setSaving(false);
+        }
+    };
 
     const ProjectCard = ({ project }: { project: any }) => (
         <TouchableOpacity 
@@ -90,7 +119,21 @@ export default function ProjectsScreen() {
             <View>
                 <View className="flex-row justify-between items-center mb-2">
                     <Text className="text-slate-400 text-xs">Avancement global</Text>
-                    <Text className="text-white text-xs font-bold">{Math.round(project.progress ?? 0)}%</Text>
+                    <View className="flex-row items-center">
+                        <Text className="text-white text-xs font-bold mr-2">{Math.round(project.progress ?? 0)}%</Text>
+                        {(user?.role === 'ADMIN' || user?.role === 'CONDUCTEUR') && (
+                            <TouchableOpacity
+                                onPress={() => {
+                                    setEditingProject(project);
+                                    setNewProgress(String(project.progress ?? 0));
+                                    setEditModalVisible(true);
+                                }}
+                                className="bg-slate-700/50 p-1 rounded-md"
+                            >
+                                <Edit2 size={12} color="#94A3B8" />
+                            </TouchableOpacity>
+                        )}
+                    </View>
                 </View>
                 <View className="w-full h-2 bg-slate-700/50 rounded-full overflow-hidden border border-white/5">
                     <View className="h-full bg-primary shadow-sm shadow-primary" style={{ width: `${Math.min(100, project.progress ?? 0)}%` }} />
@@ -139,6 +182,50 @@ export default function ProjectsScreen() {
                     )}
                     <View className="h-20" />
                 </ScrollView>
+            )}
+
+            {/* Edit Progress Modal */}
+            {editModalVisible && editingProject && (
+                <View className="absolute inset-0 bg-black/60 justify-end z-50">
+                    <View className="bg-slate-900 rounded-t-3xl p-6 border-t border-slate-800">
+                        <View className="flex-row justify-between items-center mb-6">
+                            <Text className="text-white text-xl font-bold">Modifier l'avancement</Text>
+                            <TouchableOpacity onPress={() => setEditModalVisible(false)} className="p-2 bg-slate-800 rounded-full">
+                                <Text className="text-white font-bold">✕</Text>
+                            </TouchableOpacity>
+                        </View>
+                        <Text className="text-slate-400 text-sm mb-4">
+                            Projet : <Text className="text-white font-bold">{editingProject.name}</Text>
+                        </Text>
+                        
+                        <View className="mb-6">
+                            <Text className="text-slate-400 text-xs uppercase font-bold tracking-wider mb-2">Nouveau pourcentage (%)</Text>
+                            <Input
+                                value={newProgress}
+                                onChangeText={setNewProgress}
+                                keyboardType="numeric"
+                                placeholder="Ex: 65"
+                                maxLength={3}
+                            />
+                        </View>
+
+                        <TouchableOpacity
+                            onPress={handleSaveProgress}
+                            disabled={saving}
+                            className={`w-full py-4 rounded-xl flex-row items-center justify-center ${saving ? 'bg-primary/50' : 'bg-primary'}`}
+                        >
+                            {saving ? (
+                                <ActivityIndicator color="#0F172A" />
+                            ) : (
+                                <>
+                                    <CheckCircle color="#0F172A" size={20} className="mr-2" />
+                                    <Text className="text-slate-900 font-bold text-base">Enregistrer</Text>
+                                </>
+                            )}
+                        </TouchableOpacity>
+                        <View style={{ height: insets.bottom + 20 }} />
+                    </View>
+                </View>
             )}
         </View>
     );

@@ -49,14 +49,15 @@ export default function LoginScreen() {
                 }}
             >
                 {/* Branding Section */}
-                <View className="items-center mb-16">
-                    <View className="w-20 h-20 bg-primary/10 rounded-3xl items-center justify-center mb-6 border border-primary/20 shadow-lg shadow-primary/10">
-                        <Text className="text-4xl font-black text-primary">L</Text>
+                <View className="items-center mb-12">
+                    <View className="w-32 h-32 mb-6 drop-shadow-2xl">
+                        <Image 
+                            source={require("../assets/logo-lynx.png")}
+                            className="w-full h-full"
+                            resizeMode="contain"
+                        />
                     </View>
-                    <Text className="text-5xl font-black text-white tracking-tighter">
-                        LYNX<Text className="text-primary">.</Text>
-                    </Text>
-                    <View className="bg-slate-800/50 px-3 py-1 rounded-full mt-3 border border-white/5">
+                    <View className="bg-slate-800/50 px-3 py-1 rounded-full border border-white/5">
                         <Text className="text-[10px] text-slate-400 font-bold uppercase tracking-[3px]">
                             ECOTECH Platform
                         </Text>

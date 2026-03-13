@@ -12,7 +12,9 @@ import {
     CircleDollarSign,
     Truck,
     ClipboardList,
-    Clock
+    Clock,
+    CheckSquare,
+    Image as ImageIcon
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -74,12 +76,20 @@ export default function DashboardScreen() {
             onPress: () => router.push('/attendance'),
         },
         {
+            label: 'Mes Tâches',
+            sub: "Liste de travail assigné",
+            icon: CheckSquare,
+            color: '#8B5CF6',
+            roles: ['OUVRIER', 'CHEF_EQUIPE', 'CONDUCTEUR', 'ADMIN'],
+            onPress: () => router.push('/tasks'),
+        },
+        {
             label: 'Signaler Incident',
             sub: "Signaler un problème critique",
             icon: AlertTriangle,
             color: '#EF4444',
             roles: ['CHEF_EQUIPE', 'CONDUCTEUR', 'ADMIN'],
-            onPress: () => {},
+            onPress: () => router.push('/incidents'),
         },
         {
             label: "Demander une avance",
@@ -96,6 +106,14 @@ export default function DashboardScreen() {
             color: '#6366F1',
             roles: ['CHEF_EQUIPE', 'CONDUCTEUR', 'ADMIN'],
             onPress: () => router.push('/deliveries'),
+        },
+        {
+            label: 'Galerie Photos',
+            sub: 'Photos validées des chantiers',
+            icon: ImageIcon,
+            color: '#EC4899',
+            roles: ['CLIENT'],
+            onPress: () => router.push('/feedbacks'),
         },
     ];
 

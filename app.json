@@ -4,16 +4,12 @@
     "slug": "lynx-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/logo-lynx.png",
     "userInterfaceStyle": "dark",
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/logo-lynx.png",
       "resizeMode": "contain",
       "backgroundColor": "#0F172A"
-    },
-    "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.nawarazak.lynx"
     },
     "android": {
       "package": "com.nawarazak.lynx",

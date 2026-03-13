@@ -107,9 +107,14 @@ export default function ProfileScreen() {
                 </View>
             </Button>
 
-            <View className="items-center mt-8 opacity-20">
+            <View className="items-center mt-8">
+                <Image 
+                    source={require("../../assets/logo-lynx.png")}
+                    className="w-12 h-12 mb-2 opacity-30"
+                    resizeMode="contain"
+                />
                 <Text className="text-slate-500 text-xs">LYNX Mobile v1.0.0</Text>
-                <Text className="text-slate-500 text-[10px] mt-1">NGS Digital © 2026</Text>
+                <Text className="text-slate-500 text-[10px] mt-1">ECOTECH © 2026</Text>
             </View>
 
             <View className="h-20" />
