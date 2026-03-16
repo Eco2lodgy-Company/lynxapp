@@ -44,14 +44,14 @@ export default function LoginScreen() {
         >
             <StatusBar style="light" />
             <LinearGradient
-                colors={['#1e293b', '#0f172a', '#020617']}
+                colors={['#020617', '#0F172A', '#020617']}
                 style={StyleSheet.absoluteFill}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
             />
             
             <ScrollView
-                className="flex-1 px-6"
+                className="flex-1 px-8"
                 contentContainerStyle={{ 
                     flexGrow: 1, 
                     justifyContent: "center",
@@ -62,87 +62,113 @@ export default function LoginScreen() {
             >
                 {/* Branding Section */}
                 <Animated.View entering={FadeInDown.duration(1000).springify()} className="items-center mb-16">
-                    <View className="relative shadow-2xl shadow-primary/20">
-                        <View className="w-36 h-36 bg-slate-900 rounded-[45px] p-8 border-2 border-primary/20 items-center justify-center">
+                    <View className="relative">
+                        <View className="w-32 h-32 bg-black/40 rounded-[35px] border-2 border-white/5 items-center justify-center shadow-2xl overflow-hidden">
                             <Image 
                                 source={require("../assets/logo-lynx.png")}
-                                className="w-full h-full"
+                                className="w-24 h-24"
                                 resizeMode="contain"
                             />
                         </View>
-                        <View className="absolute -top-2 -left-2 w-8 h-8 rounded-2xl border-4 border-slate-950 bg-primary/40 items-center justify-center">
-                            <View className="w-2 h-2 bg-primary rounded-full" />
+                        <View className="absolute -top-1 -left-1 w-6 h-6 rounded-full border-2 border-[#020617] bg-primary items-center justify-center">
+                            <View className="w-1.5 h-1.5 bg-white rounded-full opacity-0" />
+                            <View className="w-3 h-3 bg-primary/40 rounded-full animate-pulse blur-md" />
+                            <View className="absolute w-2 h-2 bg-primary rounded-full shadow-lg shadow-primary" />
                         </View>
                     </View>
                     
                     <Animated.View entering={FadeIn.delay(600)} className="mt-8 items-center">
-                        <Text className="text-slate-500 text-[10px] font-black uppercase tracking-[6px] mb-2">LYNX MANAGEMENT</Text>
-                        <Text className="text-white text-base font-bold tracking-[2px]">Système de Pilotage Elite</Text>
+                        <Text className="text-white/40 text-[10px] font-black uppercase tracking-[6px] mb-2">LYNX MANAGEMENT</Text>
+                        <Text className="text-white text-2xl font-black tracking-tight">Système de Pilotage Elite</Text>
                     </Animated.View>
-                </Animated.View>
+                </Animated.View> 
 
                 {/* Form Section */}
-                <PremiumCard index={1} delay={200} style={{ padding: 32 }} glass={true}>
+                <PremiumCard 
+                    index={1} 
+                    delay={200} 
+                    style={{ 
+                        padding: 28, 
+                        borderRadius: 36, 
+                        backgroundColor: 'rgba(15, 23, 42, 0.7)',
+                        borderColor: 'rgba(255, 255, 255, 0.05)',
+                        borderWidth: 1.5
+                    }} 
+                    glass={true}
+                >
                     <View className="mb-10">
                         <Text className="text-white text-3xl font-black tracking-tight mb-2">Connexion</Text>
-                        <Text className="text-slate-400 text-sm font-medium leading-5">Accédez à votre espace sécurisé pour piloter vos opérations.</Text>
+                        <Text className="text-white/40 text-[13px] font-medium leading-5">Accédez à votre espace sécurisé pour piloter vos opérations.</Text>
                     </View>
 
                     {error && (
-                        <Animated.View entering={FadeIn} className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl">
-                            <Text className="text-red-400 text-xs font-bold uppercase tracking-wider">{error}</Text>
+                        <Animated.View entering={FadeIn} className="mb-8 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl">
+                            <Text className="text-red-400 text-[10px] font-black uppercase tracking-wider text-center">{error}</Text>
                         </Animated.View>
                     )}
 
-                    <View className="space-y-6">
+                    <View>
                         <Input
                             label="ADRESSE EMAIL PROFESSIONNELLE"
-                            placeholder="votre.nom@ecotech.fr"
+                            placeholder="ouvrier3@lynx.ngs"
                             value={email}
                             onChangeText={setEmail}
                             keyboardType="email-address"
                             autoCapitalize="none"
                             autoCorrect={false}
-                            className="bg-slate-950/50 h-14"
+                            className="bg-[#2d2d14]/40 h-16 rounded-2xl border-transparent"
+                            inputClassName="text-[#8B7D5B] font-bold"
+                            labelClassName="text-[#8B7D5B]/70"
+                            //@ts-ignore
+                            placeholderTextColor="rgba(139, 125, 91, 0.3)"
                         />
 
-                        <Input
-                            label="MOT DE PASSE"
-                            placeholder="••••••••"
-                            value={password}
-                            onChangeText={setPassword}
-                            secureTextEntry
-                            className="bg-slate-950/50 h-14"
-                        />
+                        <View className="mt-2">
+                            <Input
+                                label="MOT DE PASSE"
+                                placeholder="••••••••"
+                                value={password}
+                                onChangeText={setPassword}
+                                secureTextEntry
+                                className="bg-[#2d2d14]/40 h-16 rounded-2xl border-transparent"
+                                inputClassName="text-[#8B7D5B]"
+                                labelClassName="text-[#8B7D5B]/70"
+                                //@ts-ignore
+                                placeholderTextColor="rgba(139, 125, 91, 0.3)"
+                            />
+                        </View>
                     </View>
 
                     <TouchableOpacity
                         onPress={handleLogin}
                         disabled={loading}
-                        activeOpacity={0.8}
-                        className="mt-8"
+                        activeOpacity={0.9}
+                        className="mt-8 overflow-hidden rounded-3xl"
                     >
                         <LinearGradient
-                            colors={['#C8842A', '#926220']}
+                            colors={['#C18429', '#8C5E1B']}
                             start={{ x: 0, y: 0 }}
                             end={{ x: 1, y: 1 }}
-                            style={{ height: 64, borderRadius: 20, alignItems: 'center', justifyContent: 'center' }}
+                            style={{ height: 72, alignItems: 'center', justifyContent: 'center' }}
                         >
                             {loading ? (
-                                <ActivityIndicator color="#0F172A" />
+                                <ActivityIndicator color="#FFFFFF" />
                             ) : (
-                                <Text className="text-slate-950 font-black text-lg uppercase tracking-tight">Accéder au Dashboard</Text>
+                                <Text className="text-white font-black text-lg uppercase tracking-tight">Initialiser l'accès</Text>
                             )}
                         </LinearGradient>
                     </TouchableOpacity>
                 </PremiumCard>
 
                 {/* Footer */}
-                <Animated.View entering={FadeIn.delay(1200)} className="items-center mt-16 pb-8">
-                    <Text className="text-slate-600 text-[10px] font-bold tracking-[2px] uppercase">
-                        Part of ECOTECH Ecosystem
+                <Animated.View entering={FadeIn.delay(1200)} className="items-center mt-12 pb-8">
+                    <Text className="text-white/20 text-[9px] font-black tracking-[4px] uppercase mb-1">
+                        PART OF ECOTECH ECOSYSTEM
                     </Text>
-                    <Text className="text-slate-700 text-[9px] mt-2 font-medium">
+                    <Text className="text-primary/60 text-[10px] font-black tracking-[2px] uppercase mb-4">
+                        POWERED BY NGS
+                    </Text>
+                    <Text className="text-white/10 text-[8px] font-bold">
                         © {new Date().getFullYear()} LYNX Corp. All rights reserved.
                     </Text>
                 </Animated.View>

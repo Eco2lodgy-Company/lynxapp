@@ -18,7 +18,7 @@ export const Input = forwardRef<RNTextInput, InputProps>(
         return (
             <View className={twMerge("w-full mb-5", containerClassName)}>
                 {label && (
-                    <Text className={twMerge("text-[10px] font-black text-slate-500 mb-2 ml-1 uppercase tracking-[2px]", labelClassName)}>
+                    <Text className={twMerge("text-[10px] font-black text-secondary mb-2 ml-1 uppercase tracking-[3px]", labelClassName)}>
                         {label}
                     </Text>
                 )}
@@ -30,18 +30,18 @@ export const Input = forwardRef<RNTextInput, InputProps>(
                     )}
                     <RNTextInput
                         ref={ref}
-                        placeholderTextColor="#475569" // slate-600
+                        placeholderTextColor="#A08060" // Warm brown-gray placeholder
                         className={twMerge(
-                            "w-full bg-slate-900/60 border border-white/5 rounded-2xl py-4 px-4 text-white text-base font-bold tracking-tight focus:border-primary/50",
-                            icon ? "pl-12" : "pl-5",
-                            error ? "border-red-500/50 bg-red-500/10 focus:border-red-500" : "border-white/5",
+                            "w-full bg-bg-soft border border-border-light rounded-2xl py-4.5 px-5 text-secondary text-base font-bold tracking-tight focus:border-primary",
+                            icon ? "pl-14" : "pl-6",
+                            error ? "border-red-500 bg-red-50 focus:border-red-500" : "border-border-light",
                             inputClassName
                         )}
                         {...props}
                     />
                 </View>
                 {error && (
-                    <Text className={twMerge("text-[10px] font-bold text-red-400 mt-2 ml-1 uppercase tracking-wider", errorClassName)}>
+                    <Text className={twMerge("text-[10px] font-black text-red-500 mt-2 ml-1 uppercase tracking-wider", errorClassName)}>
                         {error}
                     </Text>
                 )}

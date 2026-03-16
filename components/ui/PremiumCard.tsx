@@ -31,28 +31,28 @@ export const PremiumCard = ({ children, style, index = 0, delay = 80, glass = tr
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: 'rgba(30, 41, 59, 0.7)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: '#E5E7EB',
     overflow: 'hidden',
     padding: 20,
     marginBottom: 16,
     ...Platform.select({
       android: { 
-        elevation: 6,
-        shadowColor: '#000',
+        elevation: 4,
+        shadowColor: '#4A3520',
       },
       ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.3,
-        shadowRadius: 12,
+        shadowColor: '#4A3520',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.08,
+        shadowRadius: 10,
       }
     })
   },
   glassEffect: {
-    backgroundColor: Platform.OS === 'ios' ? 'rgba(30, 41, 59, 0.4)' : 'rgba(15, 23, 42, 0.85)',
-    borderColor: 'rgba(200, 132, 42, 0.15)', // LYNX subtle gold border
+    backgroundColor: Platform.OS === 'ios' ? 'rgba(255, 255, 255, 0.7)' : '#FFFFFF',
+    borderColor: 'rgba(74, 53, 32, 0.05)', 
   }
 });

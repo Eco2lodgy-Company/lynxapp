@@ -5,36 +5,36 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // écoTech Brand Colors
-        primary: "#C8842A",          // Warm amber-brown (main logo color)
-        "primary-dark": "#A0671E",   // Darker brown
-        eco: "#7A8000",              // Olive green ("é" in écoTech)
-        "eco-light": "rgba(122,128,0,0.15)",
-        "brand-dark": "#6B2F10",     // Deep dark brown (logo handle)
-        "brand-sand": "#D2A76A",     // Light sand/beige
+        // LYNX Warm Premium Palette
+        primary: "#E67E22",          // Vibrant Orange (Active actions)
+        secondary: "#4A3520",        // Deep Marron (Headers & Identity)
+        "brand-orange": "#E67E22",
+        "brand-marron": "#4A3520",
+        "brand-cream": "#FDFCFB",
         bg: {
-          light: "#FAF6F1",          // Warm off-white for light surfaces
-          dark: "#0F0C08",           // Very dark warm background
+          light: "#FFFFFF",          // Pure White
+          soft: "#F8F9FA",           // Light Gray / Alabaster
+          warm: "#FAF6F1",
         },
         surface: {
-          light: "#FFFFFF",
-          dark: "#1A1410",           // Warm dark card surface
-          accent: "#2A1E0F",
+          light: "#F3F4F6",          // Light warm surface
+          warm: "#EADDCA",           // Beige accent
         },
         border: {
-          light: "#E8DDD0",
-          dark: "#3D2E1A",           // Warm border
-          accent: "rgba(200, 132, 42, 0.25)",
+          light: "#E5E7EB",
+          warm: "rgba(74, 53, 32, 0.1)", // Subtle brown border
         },
-        slate: {
-          950: "#07050300",
-          900: "#0F0C08",
-          800: "#1A1410",
-          700: "#2A1E0F",
-          600: "#4A3520",
-          500: "#7A6040",
-          400: "#A08060",
-          300: "#C8A880",
+        slate: { // Keeping slate names but remapping to warm tones to minimize breaking class names
+          950: "#FFFFFF",
+          900: "#F8F9FA",
+          800: "#F3F4F6",
+          700: "#E5E7EB",
+          600: "#D1D5DB",
+          500: "#9CA3AF",
+          400: "#6B7280",
+          300: "#4B5563",
+          200: "#374151",
+          100: "#1F2937",
         }
       },
       spacing: {

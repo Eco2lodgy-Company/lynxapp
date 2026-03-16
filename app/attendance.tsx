@@ -1,55 +1,92 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, Alert, TouchableOpacity, ActivityIndicator, StyleSheet, Platform } from 'react-native';
-import api from '../lib/api';
+import { View, Text, ScrollView, Alert, TouchableOpacity, ActivityIndicator, StyleSheet, Platform, Modal, Image } from 'react-native';
+import api, { ASSET_BASE_URL } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
-import { Clock, CheckCircle2, LogIn, LogOut, ChevronLeft, Users } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
+import { Clock, CheckCircle2, LogIn, LogOut, ChevronLeft, Users, MapPin, CheckCircle, Briefcase, X } from 'lucide-react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '../components/ui/Button';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PremiumCard } from '../components/ui/PremiumCard';
-import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
+import Animated, { FadeInDown, FadeInUp, FadeIn } from 'react-native-reanimated';
+import * as Location from 'expo-location';
 
 export default function AttendanceScreen() {
     const { user } = useAuth();
     const router = useRouter();
+    const params = useLocalSearchParams();
     const insets = useSafeAreaInsets();
     const [loading, setLoading] = useState(false);
     const [fetchingTeam, setFetchingTeam] = useState(true);
     const [teamAttendance, setTeamAttendance] = useState<any[]>([]);
     const [todayRecord, setTodayRecord] = useState<any>(null);
+    const [projects, setProjects] = useState<any[]>([]);
+    const [selectedProjectId, setSelectedProjectId] = useState<string | null>((params.projectId as string) || null);
+    const [showProjectPicker, setShowProjectPicker] = useState(false);
 
     const today = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
 
-    const fetchTeamAttendance = async () => {
+    const fetchData = async () => {
         try {
-            const res = await api.get('/attendance');
-            setTeamAttendance(res.data);
-            const mine = res.data.find((a: any) => a.userId === user?.id);
+            const [attRes, projRes] = await Promise.all([
+                api.get('/attendance'),
+                api.get('/projects')
+            ]);
+            
+            setTeamAttendance(attRes.data);
+            const mine = attRes.data.find((a: any) => a.userId === user?.id);
             setTodayRecord(mine || null);
+            
+            if (mine?.projectId) {
+                setSelectedProjectId(mine.projectId);
+            }
+            
+            setProjects(projRes.data);
         } catch (err) {
-            console.error('Error fetching attendance:', err);
+            console.error('Error fetching attendance data:', err);
         } finally {
             setFetchingTeam(false);
         }
     };
 
     useEffect(() => {
-        fetchTeamAttendance();
+        fetchData();
     }, []);
 
+    const getLocation = async () => {
+        try {
+            let { status } = await Location.requestForegroundPermissionsAsync();
+            if (status !== 'granted') {
+                return null;
+            }
+            let location = await Location.getCurrentPositionAsync({});
+            return location.coords;
+        } catch (e) {
+            console.error("Location error:", e);
+            return null;
+        }
+    };
+
     const handleCheckIn = async () => {
+        if (!selectedProjectId) {
+            Alert.alert('Projet requis', 'Veuillez sélectionner un chantier pour pointer votre arrivée.');
+            setShowProjectPicker(true);
+            return;
+        }
+
         setLoading(true);
         try {
+            const coords = await getLocation();
             const now = new Date().toISOString();
             await api.post('/attendance', {
-                userId: user?.id,
                 date: now,
-                status: 'VALIDE',
                 checkIn: now,
+                projectId: selectedProjectId,
+                latitude: coords?.latitude,
+                longitude: coords?.longitude,
             });
             Alert.alert('✅ Arrivée enregistrée', `Bienvenue ! Il est ${new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`);
-            fetchTeamAttendance();
+            fetchData();
         } catch (err: any) {
             Alert.alert('Erreur', err.response?.data?.error || 'Impossible d\'enregistrer le check-in');
         } finally {
@@ -60,17 +97,33 @@ export default function AttendanceScreen() {
     const handleCheckOut = async () => {
         setLoading(true);
         try {
+            const coords = await getLocation();
             const now = new Date().toISOString();
             await api.post('/attendance', {
-                userId: user?.id,
                 date: now,
-                status: todayRecord?.status || 'VALIDE',
                 checkOut: now,
+                latitude: coords?.latitude,
+                longitude: coords?.longitude,
             });
             Alert.alert('✅ Départ enregistré', `Bonne fin de journée ! Départ à ${new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`);
-            fetchTeamAttendance();
+            fetchData();
         } catch (err: any) {
             Alert.alert('Erreur', err.response?.data?.error || 'Impossible d\'enregistrer le check-out');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleValidate = async (attendanceId: string) => {
+        setLoading(true);
+        try {
+            await api.post('/attendance/validate', {
+                attendanceIds: [attendanceId]
+            });
+            Alert.alert('✅ Validé', 'Le pointage a été validé avec succès.');
+            fetchData();
+        } catch (err: any) {
+            Alert.alert('Erreur', err.response?.data?.error || 'Validation échouée');
         } finally {
             setLoading(false);
         }
@@ -90,146 +143,250 @@ export default function AttendanceScreen() {
     };
 
     const workedToday = todayRecord ? calculateHours(todayRecord.checkIn, todayRecord.checkOut) : null;
+    const selectedProject = projects.find(p => p.id === selectedProjectId);
+
+    const ProjectPicker = () => (
+        <Modal
+            visible={showProjectPicker}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setShowProjectPicker(false)}
+        >
+            <View className="flex-1 bg-black/60 justify-center items-center px-6">
+                <Animated.View entering={FadeInUp} className="bg-white rounded-[40px] w-full max-h-[80%] overflow-hidden">
+                    <View className="p-8 border-b border-slate-100 flex-row justify-between items-center">
+                        <View>
+                            <Text className="text-secondary text-2xl font-black tracking-tight">Chantier</Text>
+                            <Text className="text-secondary/40 text-[10px] font-black uppercase tracking-widest mt-1">Sélectionnez votre lieu</Text>
+                        </View>
+                        <TouchableOpacity 
+                            onPress={() => setShowProjectPicker(false)}
+                            className="w-12 h-12 bg-slate-50 rounded-full items-center justify-center"
+                        >
+                            <X size={20} color="#4A3520" />
+                        </TouchableOpacity>
+                    </View>
+                    <ScrollView className="p-4">
+                        {projects.map((project) => (
+                            <TouchableOpacity
+                                key={project.id}
+                                onPress={() => {
+                                    setSelectedProjectId(project.id);
+                                    setShowProjectPicker(false);
+                                }}
+                                className={`p-6 mb-3 rounded-3xl border-2 flex-row items-center justify-between ${selectedProjectId === project.id ? 'border-primary bg-primary/5' : 'border-slate-50 bg-slate-50'}`}
+                            >
+                                <View className="flex-row items-center flex-1">
+                                    <View className={`w-12 h-12 rounded-2xl items-center justify-center mr-4 ${selectedProjectId === project.id ? 'bg-primary/20' : 'bg-white'}`}>
+                                        <Briefcase size={20} color={selectedProjectId === project.id ? '#C8842A' : '#4A3520'} />
+                                    </View>
+                                    <Text className={`font-black text-lg ${selectedProjectId === project.id ? 'text-primary' : 'text-secondary'}`} numberOfLines={1}>
+                                        {project.name}
+                                    </Text>
+                                </View>
+                                {selectedProjectId === project.id && <CheckCircle size={20} color="#C8842A" />}
+                            </TouchableOpacity>
+                        ))}
+                    </ScrollView>
+                </Animated.View>
+            </View>
+        </Modal>
+    );
 
     return (
-        <View className="flex-1 bg-slate-950">
+        <View className="flex-1 bg-white">
             <LinearGradient
-                colors={['#1e293b', '#0f172a', '#020617']}
+                colors={['#FFFFFF', '#FDFCFB', '#F8F9FA']}
                 style={StyleSheet.absoluteFill}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
             />
             
             <View 
-                className="px-5 mb-8 flex-row items-center" 
+                className="px-6 mb-10 flex-row items-center justify-between" 
                 style={{ paddingTop: Math.max(insets.top, 24) }}
             >
-                <TouchableOpacity 
-                    onPress={() => router.back()} 
-                    className="mr-6 bg-slate-900 w-12 h-12 rounded-2xl items-center justify-center border border-white/10"
-                >
-                    <ChevronLeft size={24} color="#C8842A" strokeWidth={3} />
-                </TouchableOpacity>
-                <View>
-                    <Text className="text-slate-500 text-[10px] font-black uppercase tracking-[4px] mb-1">Journal de Bord</Text>
-                    <Text className="text-white text-3xl font-black tracking-tight">Pointage</Text>
+                <View className="flex-row items-center">
+                    <TouchableOpacity 
+                        onPress={() => router.back()} 
+                        className="mr-5 bg-bg-soft w-14 h-14 rounded-2xl items-center justify-center border border-border-light shadow-sm"
+                    >
+                        <ChevronLeft size={28} color="#4A3520" strokeWidth={3} />
+                    </TouchableOpacity>
+                    <View>
+                        <Text className="text-secondary/40 text-[10px] font-black uppercase tracking-[4px] mb-1">Journal Elite</Text>
+                        <Text className="text-secondary text-4xl font-black tracking-tight">Pointage</Text>
+                    </View>
                 </View>
             </View>
 
             <ScrollView 
-                className="flex-1 px-5" 
+                className="flex-1 px-6" 
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingBottom: 120 }}
+                contentContainerStyle={{ paddingBottom: 150 }}
             >
-                <Animated.View entering={FadeInDown.duration(600)} className="mb-10 items-center">
-                    <Text className="text-slate-400 font-black text-xs uppercase tracking-[3px] opacity-60">{today}</Text>
+                <Animated.View entering={FadeInDown.duration(600)} className="mb-12 items-center">
+                    <View className="bg-secondary/5 px-6 py-2.5 rounded-2xl border border-secondary/10">
+                        <Text className="text-secondary font-black text-xs uppercase tracking-[4px]">{today.toUpperCase()}</Text>
+                    </View>
                 </Animated.View>
 
                 {/* My Status Card */}
-                <PremiumCard index={1} glass={true} style={{ padding: 24, marginBottom: 40 }}>
+                <PremiumCard index={1} glass={true} style={{ padding: 28, marginBottom: 48 }}>
                     <View className="flex-row justify-between items-center mb-10">
-                        <Text className="text-white text-xl font-black tracking-tight">Ma Présence</Text>
-                        <View className={`px-4 py-1.5 rounded-xl border-2 ${todayRecord ? 'border-primary/40 bg-primary/5' : 'border-slate-800 bg-slate-900/50'}`}>
-                            <Text className={`text-[10px] font-black tracking-widest uppercase ${todayRecord ? 'text-primary' : 'text-slate-600'}`}>
-                                {todayRecord ? 'ACTIF' : 'ATTENTE'}
+                        <View>
+                            <Text className="text-secondary text-2xl font-black tracking-tight">Ma Présence</Text>
+                            <TouchableOpacity 
+                                onPress={() => !todayRecord?.checkIn && setShowProjectPicker(true)}
+                                className="flex-row items-center mt-2"
+                                disabled={!!todayRecord?.checkIn}
+                            >
+                                <Briefcase size={12} color="#C8842A" />
+                                <Text className="text-primary text-[11px] font-black uppercase tracking-widest ml-2" numberOfLines={1}>
+                                    {selectedProject?.name || todayRecord?.project?.name || 'Sélectionner Chantier'}
+                                </Text>
+                                {!todayRecord?.checkIn && <Text className="text-primary/40 text-[10px] ml-2">✎</Text>}
+                            </TouchableOpacity>
+                        </View>
+                        <View className={`px-5 py-2 rounded-2xl border-2 ${todayRecord?.status === 'VALIDE' ? 'border-primary/40 bg-primary/5' : todayRecord?.status === 'EN_ATTENTE' ? 'border-orange-400/40 bg-orange-50' : 'border-border-light bg-bg-soft'}`}>
+                            <Text className={`text-[11px] font-black tracking-widest uppercase ${todayRecord?.status === 'VALIDE' ? 'text-primary' : todayRecord?.status === 'EN_ATTENTE' ? 'text-orange-600' : 'text-secondary/30'}`}>
+                                {todayRecord?.status === 'VALIDE' ? 'VALIDÉ' : todayRecord?.status === 'EN_ATTENTE' ? 'EN ATTENTE' : 'SANS POINTAGE'}
                             </Text>
                         </View>
                     </View>
 
                     <View className="flex-row justify-between items-center mb-12">
                         <View className="items-center flex-1">
-                            <View className="w-20 h-20 rounded-3xl bg-green-500/10 border-2 border-green-500/20 items-center justify-center mb-4">
-                                <LogIn size={32} color="#10B981" strokeWidth={2.5} />
+                            <View className="w-24 h-24 rounded-[30px] bg-green-500/5 border-2 border-green-500/10 items-center justify-center mb-5">
+                                <LogIn size={36} color="#10B981" strokeWidth={2.5} />
                             </View>
-                            <Text className="text-slate-500 text-[9px] font-black uppercase tracking-wider mb-1">Entrée</Text>
-                            <Text className="text-white font-black text-2xl">{formatTime(todayRecord?.checkIn)}</Text>
+                            <Text className="text-secondary/30 text-[10px] font-black uppercase tracking-wider mb-1">Arrivée</Text>
+                            <Text className="text-secondary font-black text-3xl tracking-tighter">{formatTime(todayRecord?.checkIn)}</Text>
                         </View>
 
                         <View className="items-center justify-center px-6">
                             {workedToday ? (
-                                <View className="bg-primary/20 border-2 border-primary/40 px-4 py-2.5 rounded-2xl">
-                                    <Text className="text-primary font-black text-lg tracking-tighter">{workedToday}</Text>
-                                    <View className="w-full h-px bg-primary/30 my-1" />
-                                    <Text className="text-primary/60 text-[8px] font-bold text-center uppercase">Total</Text>
+                                <View className="bg-primary/5 border-2 border-primary/20 px-5 py-3 rounded-2xl">
+                                    <Text className="text-primary font-black text-xl tracking-tighter">{workedToday}</Text>
+                                    <View className="w-full h-px bg-primary/20 my-1.5" />
+                                    <Text className="text-primary/60 text-[9px] font-black text-center uppercase tracking-widest">Durée</Text>
                                 </View>
                             ) : (
-                                <View className="w-10 h-0.5 bg-slate-800 rounded-full" />
+                                <View className="w-12 h-1 bg-secondary/5 rounded-full" />
                             )}
                         </View>
 
                         <View className="items-center flex-1">
-                            <View className="w-20 h-20 rounded-3xl bg-red-500/10 border-2 border-red-500/20 items-center justify-center mb-4">
-                                <LogOut size={32} color="#F43F5E" strokeWidth={2.5} />
+                            <View className="w-24 h-24 rounded-[30px] bg-red-500/5 border-2 border-red-500/10 items-center justify-center mb-5">
+                                <LogOut size={36} color="#F43F5E" strokeWidth={2.5} />
                             </View>
-                            <Text className="text-slate-500 text-[9px] font-black uppercase tracking-wider mb-1">Sortie</Text>
-                            <Text className="text-white font-black text-2xl">{formatTime(todayRecord?.checkOut)}</Text>
+                            <Text className="text-secondary/30 text-[10px] font-black uppercase tracking-wider mb-1">Départ</Text>
+                            <Text className="text-secondary font-black text-3xl tracking-tighter">{formatTime(todayRecord?.checkOut)}</Text>
                         </View>
                     </View>
 
-                    <View className="flex-row gap-4">
+                    <View className="flex-row gap-5">
                         <Button
                             onPress={handleCheckIn}
                             loading={loading}
                             disabled={!!todayRecord?.checkIn}
-                            className={`flex-1 h-16 rounded-2xl shadow-none ${todayRecord?.checkIn ? 'bg-slate-900 border border-white/5' : ''}`}
+                            className={`flex-1 h-20 rounded-3xl shadow-none ${todayRecord?.checkIn ? 'bg-bg-soft border border-border-light' : ''}`}
                         >
-                            {todayRecord?.checkIn ? 'Pointé' : 'Arrivée'}
+                            <View className="items-center">
+                                <Text className={`font-black uppercase tracking-widest ${todayRecord?.checkIn ? 'text-secondary/40' : 'text-white'}`}>
+                                    {todayRecord?.checkIn ? 'Arrivée✓' : "Pointer l'Arrivée"}
+                                </Text>
+                            </View>
                         </Button>
                         <Button
                             onPress={handleCheckOut}
                             loading={loading}
                             variant={todayRecord?.checkIn && !todayRecord?.checkOut ? 'danger' : 'secondary'}
                             disabled={!todayRecord?.checkIn || !!todayRecord?.checkOut}
-                            className="flex-1 h-16 rounded-2xl border-0"
-                            style={(!todayRecord?.checkIn || todayRecord?.checkOut) ? { backgroundColor: 'rgba(30, 41, 59, 0.4)', opacity: 0.4 } : {}}
+                            className="flex-1 h-20 rounded-3xl"
                         >
-                            {todayRecord?.checkOut ? 'Pointé' : 'Départ'}
+                            <View className="items-center">
+                                <Text className={`font-black uppercase tracking-widest ${todayRecord?.checkOut ? 'text-secondary/40' : 'text-white'}`}>
+                                    {todayRecord?.checkOut ? 'Départ✓' : "Pointer le Départ"}
+                                </Text>
+                            </View>
                         </Button>
                     </View>
                 </PremiumCard>
 
-                {/* Team Attendance (for Chefs d'équipe and above) */}
+                {/* Team Attendance */}
                 {(user?.role === 'CHEF_EQUIPE' || user?.role === 'CONDUCTEUR' || user?.role === 'ADMIN') && (
                     <View className="mt-4">
-                        <View className="flex-row items-center mb-8 px-1">
-                            <View className="w-8 h-8 rounded-lg bg-primary/10 items-center justify-center mr-3">
-                                <Users size={16} color="#C8842A" strokeWidth={2.5} />
+                        <View className="flex-row items-center mb-10 px-2">
+                            <View className="w-10 h-10 rounded-xl bg-secondary/5 items-center justify-center mr-4">
+                                <Users size={20} color="#4A3520" strokeWidth={2.5} />
                             </View>
-                            <Text className="text-white text-xl font-black tracking-tight">Équipe du Jour</Text>
+                            <Text className="text-secondary text-2xl font-black tracking-tight">Équipe Opérationnelle</Text>
                         </View>
                         
                         {fetchingTeam ? (
-                            <ActivityIndicator color="#C8842A" size="large" />
+                            <ActivityIndicator color="#E67E22" size="large" />
                         ) : teamAttendance.length === 0 ? (
-                            <PremiumCard index={0} style={{ padding: 40, alignItems: 'center' }}>
-                                <Users size={48} color="#1e293b" strokeWidth={1} />
-                                <Text className="text-slate-500 italic mt-4 text-center">Aucun membre n'a pointé pour le moment.</Text>
+                            <PremiumCard index={0} style={{ padding: 60, alignItems: 'center' }}>
+                                <Users size={64} color="#F3F4F6" strokeWidth={1} />
+                                <Text className="text-secondary/30 italic mt-6 text-center font-bold">Aucun membre n'a pointé ce jour.</Text>
                             </PremiumCard>
                         ) : (
                             teamAttendance.map((record: any, idx: number) => (
-                                <PremiumCard key={record.id} index={idx} glass={true} style={{ padding: 16, marginBottom: 12 }}>
+                                <PremiumCard key={record.id} index={idx} glass={true} style={{ padding: 18, marginBottom: 16 }}>
                                     <View className="flex-row items-center justify-between">
                                         <View className="flex-row items-center flex-1">
-                                            <View className="w-12 h-12 rounded-2xl bg-slate-900 items-center justify-center mr-4 border border-white/5">
-                                                <Text className="text-primary font-black text-lg">{record.user?.firstName?.[0]}</Text>
+                                            <View className="w-14 h-14 rounded-2xl bg-bg-soft items-center justify-center mr-5 border border-border-light overflow-hidden">
+                                                {record.user?.avatar ? (
+                                                    <Image 
+                                                        source={{ uri: record.user.avatar.startsWith('http') ? record.user.avatar : `${ASSET_BASE_URL}${record.user.avatar}` }} 
+                                                        className="w-full h-full"
+                                                        resizeMode="cover"
+                                                    />
+                                                ) : (
+                                                    <Text className="text-secondary font-black text-xl">{record.user?.firstName?.[0]}</Text>
+                                                )}
                                             </View>
                                             <View className="flex-1">
-                                                <Text className="text-white font-bold text-base tracking-tight" numberOfLines={1}>
-                                                    {record.user?.firstName} {record.user?.lastName}
-                                                </Text>
-                                                <Text className="text-slate-500 text-[10px] font-black uppercase tracking-wider mt-0.5">{record.user?.role}</Text>
+                                                <View className="flex-row items-center">
+                                                    <Text className="text-secondary font-black text-[17px] tracking-tight mr-2" numberOfLines={1}>
+                                                        {record.user?.firstName} {record.user?.lastName}
+                                                    </Text>
+                                                    {record.latitude && (
+                                                        <MapPin size={12} color="#E67E22" />
+                                                    )}
+                                                </View>
+                                                <View className="flex-row items-center mt-1">
+                                                    <Briefcase size={8} color="#C8842A" />
+                                                    <Text className="text-primary text-[9px] font-black uppercase tracking-widest ml-1">{record.project?.name || 'Non spécifié'}</Text>
+                                                </View>
                                             </View>
                                         </View>
                                         <View className="items-end">
-                                            <View className="flex-row items-center bg-slate-950/50 px-3 py-2 rounded-xl border border-white/5">
-                                                <Text className="text-green-500 font-black text-xs">↑ {formatTime(record.checkIn)}</Text>
-                                                <View className="w-px h-3 bg-slate-800 mx-2" />
+                                            <View className="flex-row items-center bg-white px-4 py-2.5 rounded-2xl border border-border-light shadow-sm">
+                                                <Text className="text-green-600 font-black text-xs">↑ {formatTime(record.checkIn)}</Text>
+                                                <View className="w-px h-3 bg-border-light mx-3" />
                                                 <Text className="text-red-500 font-black text-xs">↓ {formatTime(record.checkOut)}</Text>
                                             </View>
-                                            {calculateHours(record.checkIn, record.checkOut) && (
-                                                <View className="bg-primary/5 px-2 py-0.5 rounded-lg self-end mt-2">
-                                                    <Text className="text-primary text-[9px] font-black uppercase tracking-widest">{calculateHours(record.checkIn, record.checkOut)}</Text>
+                                            {record.status === 'EN_ATTENTE' && user?.role === 'CHEF_EQUIPE' ? (
+                                                <TouchableOpacity 
+                                                    onPress={() => handleValidate(record.id)}
+                                                    className="bg-primary px-4 py-1.5 rounded-xl self-end mt-2.5 flex-row items-center"
+                                                >
+                                                    <CheckCircle size={10} color="white" className="mr-2" />
+                                                    <Text className="text-white text-[9px] font-black uppercase tracking-[1px]">Valider</Text>
+                                                </TouchableOpacity>
+                                            ) : record.status === 'VALIDE' ? (
+                                                <View className="bg-green-50 px-3 py-1 rounded-xl self-end mt-2.5 flex-row items-center border border-green-100">
+                                                    <CheckCircle2 size={10} color="#10B981" className="mr-2" />
+                                                    <Text className="text-green-600 text-[9px] font-black uppercase tracking-[1px]">Validé</Text>
                                                 </View>
+                                            ) : (
+                                                calculateHours(record.checkIn, record.checkOut) && (
+                                                    <View className="bg-primary/10 px-3 py-1 rounded-xl self-end mt-2.5">
+                                                        <Text className="text-primary text-[10px] font-black uppercase tracking-[2px]">{calculateHours(record.checkIn, record.checkOut)}</Text>
+                                                    </View>
+                                                )
                                             )}
                                         </View>
                                     </View>
@@ -239,6 +396,7 @@ export default function AttendanceScreen() {
                     </View>
                 )}
             </ScrollView>
+            <ProjectPicker />
         </View>
     );
 }

@@ -32,17 +32,17 @@ export function Button({
     };
 
     const variantClasses = {
-        primary: "shadow-xl shadow-primary/30",
-        secondary: "bg-slate-800 border border-slate-700",
-        danger: "bg-red-600 shadow-lg shadow-red-500/20",
-        ghost: "bg-transparent active:bg-white/5",
+        primary: "shadow-xl shadow-primary/20",
+        secondary: "bg-bg-soft border border-border-light",
+        danger: "bg-red-500 shadow-lg shadow-red-500/10",
+        ghost: "bg-transparent active:bg-black/5",
     };
 
     const textClasses = {
-        primary: "text-slate-950 font-black uppercase tracking-tighter",
-        secondary: "text-slate-200 font-bold tracking-tight",
+        primary: "text-white font-black uppercase tracking-tight",
+        secondary: "text-secondary font-bold tracking-tight",
         danger: "text-white font-bold uppercase tracking-tight",
-        ghost: "text-primary font-bold",
+        ghost: "text-secondary font-bold",
     };
 
     const mergedClass = twMerge(
@@ -58,7 +58,7 @@ export function Button({
     const content = (
         <>
             {loading ? (
-                <ActivityIndicator color={variant === "primary" ? "#0f172a" : "#C8842A"} />
+                <ActivityIndicator color={variant === "primary" ? "#FFFFFF" : "#E67E22"} />
             ) : (
                 typeof children === 'string' ? (
                     <Text className={mergedTextClass}>{children}</Text>
@@ -75,9 +75,9 @@ export function Button({
                 {...props}
             >
                 <LinearGradient
-                    colors={['#C8842A', '#926220']}
+                    colors={['#4A3520', '#E67E22']}
                     start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
+                    end={{ x: 1, y: 1 }}
                     className={mergedClass}
                 >
                     {content}

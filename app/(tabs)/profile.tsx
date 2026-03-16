@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, StyleSheet, Platform } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Image, StyleSheet, Platform, Alert, ActivityIndicator } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { 
     User, 
@@ -8,22 +8,111 @@ import {
     LogOut,
     Bell,
     ChevronRight,
-    Mail
+    Mail,
+    Lock,
+    X,
+    CheckCircle,
+    Camera
 } from 'lucide-react-native';
 import { Button } from '../../components/ui/Button';
+import { Input } from '../../components/ui/Input';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PremiumCard } from '../../components/ui/PremiumCard';
-import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
+import Animated, { FadeInDown, FadeIn, FadeInUp } from 'react-native-reanimated';
+import api, { ASSET_BASE_URL } from '../../lib/api';
+import * as ImagePicker from 'expo-image-picker';
 
 export default function ProfileScreen() {
-    const { user, logout } = useAuth();
+    const { user, logout, updateUser } = useAuth();
     const insets = useSafeAreaInsets();
+
+    const [passwordModalVisible, setPasswordModalVisible] = useState(false);
+    const [currentPassword, setCurrentPassword] = useState("");
+    const [newPassword, setNewPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
+    const [saving, setSaving] = useState(false);
+    const [uploading, setUploading] = useState(false);
+
+    const pickImage = async () => {
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.8,
+        });
+
+        if (!result.canceled && result.assets[0].uri) {
+            handleUploadAvatar(result.assets[0].uri);
+        }
+    };
+
+    const handleUploadAvatar = async (uri: string) => {
+        setUploading(true);
+        try {
+            const formData = new FormData();
+            const fileName = uri.split('/').pop() || 'avatar.jpg';
+            const fileType = fileName.split('.').pop() === 'png' ? 'image/png' : 'image/jpeg';
+
+            // @ts-ignore
+            formData.append('file', {
+                uri,
+                name: fileName,
+                type: fileType,
+            });
+
+            const uploadRes = await api.post('/upload', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+            });
+
+            const imageUrl = uploadRes.data.url;
+            
+            await api.put('/profile', { avatar: imageUrl });
+            await updateUser({ image: imageUrl });
+            
+            Alert.alert("Succès", "Photo de profil mise à jour");
+        } catch (error: any) {
+            console.error("Error uploading avatar:", error);
+            Alert.alert("Erreur", "Impossible de mettre à jour la photo de profil");
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    const handleUpdatePassword = async () => {
+        if (!currentPassword || !newPassword || !confirmPassword) {
+            Alert.alert("Erreur", "Veuillez remplir tous les champs");
+            return;
+        }
+
+        if (newPassword !== confirmPassword) {
+            Alert.alert("Erreur", "Le nouveau mot de passe et sa confirmation ne correspondent pas");
+            return;
+        }
+
+        setSaving(true);
+        try {
+            await api.put('/profile', {
+                currentPassword,
+                newPassword
+            });
+            Alert.alert("Succès", "Votre mot de passe a été mis à jour avec succès");
+            setPasswordModalVisible(false);
+            setCurrentPassword("");
+            setNewPassword("");
+            setConfirmPassword("");
+        } catch (error: any) {
+            console.error("Error updating password:", error);
+            Alert.alert("Erreur", error.response?.data?.error || "Une erreur est survenue");
+        } finally {
+            setSaving(false);
+        }
+    };
 
     const MenuButton = ({ icon: Icon, title, subtitle, color, onPress, index }: any) => (
         <PremiumCard 
             index={index} 
-            style={{ padding: 12, marginBottom: 12 }}
+            style={{ padding: 14, marginBottom: 14 }}
             glass={true}
         >
             <TouchableOpacity 
@@ -32,25 +121,25 @@ export default function ProfileScreen() {
                 activeOpacity={0.6}
             >
                 <View className="flex-row items-center">
-                    <View className="w-12 h-12 rounded-2xl items-center justify-center mr-4" style={{ backgroundColor: color + '15' }}>
-                        <Icon size={22} color={color} strokeWidth={2} />
+                    <View className="w-14 h-14 rounded-2xl items-center justify-center mr-5" style={{ backgroundColor: color + '10' }}>
+                        <Icon size={26} color={color} strokeWidth={2} />
                     </View>
                     <View>
-                        <Text className="text-white font-bold text-base tracking-tight">{title}</Text>
-                        {subtitle && <Text className="text-slate-400 text-[11px] font-medium mt-0.5">{subtitle}</Text>}
+                        <Text className="text-secondary font-black text-lg tracking-tight">{title}</Text>
+                        {subtitle && <Text className="text-secondary/50 text-xs font-medium mt-0.5">{subtitle}</Text>}
                     </View>
                 </View>
-                <View className="bg-slate-800/50 p-2 rounded-xl border border-slate-700/50">
-                    <ChevronRight color="#C8842A" size={16} strokeWidth={3} />
+                <View className="bg-bg-soft p-2.5 rounded-2xl border border-border-light">
+                    <ChevronRight color="#4A3520" size={18} strokeWidth={3} />
                 </View>
             </TouchableOpacity>
         </PremiumCard>
     );
 
     return (
-        <View className="flex-1 bg-slate-950">
+        <View className="flex-1 bg-white">
             <LinearGradient
-                colors={['#1e293b', '#0f172a', '#020617']}
+                colors={['#FFFFFF', '#FDFCFB', '#F8F9FA']}
                 style={StyleSheet.absoluteFill}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
@@ -59,78 +148,89 @@ export default function ProfileScreen() {
             <ScrollView 
                 className="flex-1" 
                 contentContainerStyle={{ 
-                    padding: 20, 
+                    padding: 24, 
                     paddingTop: Math.max(insets.top, 24),
                     paddingBottom: Math.max(insets.bottom, 120)
                 }}
             >
-                <Animated.View entering={FadeInDown.duration(800)} className="items-center mb-10">
+                <Animated.View entering={FadeInDown.duration(800)} className="items-center mb-12">
                     <View className="relative">
-                        <View className="w-28 h-28 bg-slate-800 rounded-[35px] border-2 border-primary/40 items-center justify-center overflow-hidden shadow-2xl shadow-primary/20">
-                            {user?.image ? (
-                                <Image source={{ uri: user.image }} className="w-full h-full" />
-                            ) : (
-                                <View className="bg-slate-900 w-full h-full items-center justify-center">
-                                    <User size={56} color="#C8842A" strokeWidth={1.5} />
-                                </View>
-                            )}
-                        </View>
-                        <View className="absolute -bottom-2 -right-2 bg-primary w-8 h-8 rounded-2xl border-4 border-slate-950 items-center justify-center shadow-lg">
-                            <View className="w-2.5 h-2.5 bg-slate-950 rounded-full" />
-                        </View>
+                        <TouchableOpacity 
+                            onPress={pickImage}
+                            disabled={uploading}
+                            activeOpacity={0.8}
+                        >
+                            <View className="w-32 h-32 bg-bg-soft rounded-[45px] border-4 border-primary/20 items-center justify-center overflow-hidden shadow-2xl shadow-primary/10">
+                                {uploading ? (
+                                    <ActivityIndicator color="#C8842A" size="large" />
+                                ) : user?.image ? (
+                                    <Image source={{ uri: user.image.startsWith('http') ? user.image : `${ASSET_BASE_URL}${user.image}` }} className="w-full h-full" />
+                                ) : (
+                                    <View className="bg-bg-warm w-full h-full items-center justify-center">
+                                        <User size={64} color="#4A3520" strokeWidth={1.5} />
+                                    </View>
+                                )}
+                            </View>
+                            <View className="absolute -bottom-2 -right-2 bg-primary w-12 h-12 rounded-3xl border-4 border-white items-center justify-center shadow-lg">
+                                <Camera size={20} color="white" />
+                            </View>
+                        </TouchableOpacity>
                     </View>
-                    <Text className="text-white text-3xl font-black mt-6 tracking-tight">{user?.name}</Text>
-                    <View className="bg-primary/10 px-4 py-1.5 rounded-full border border-primary/20 mt-2">
-                        <Text className="text-primary text-[10px] font-black uppercase tracking-[2px]">{user?.role}</Text>
+                    <Text className="text-secondary text-4xl font-black mt-8 tracking-tight">{user?.name}</Text>
+                    <View className="bg-secondary/5 px-5 py-2 rounded-2xl border border-secondary/10 mt-3">
+                        <Text className="text-secondary text-[11px] font-black uppercase tracking-[3px]">{user?.role}</Text>
                     </View>
                 </Animated.View>
 
-                <PremiumCard index={1} style={{ padding: 16, marginBottom: 32 }}>
-                    <View className="flex-row items-center mb-5">
-                        <View className="w-8 h-8 rounded-lg bg-slate-900 items-center justify-center mr-4">
-                            <Mail size={16} color="#94A3B8" />
+                <PremiumCard index={1} style={{ padding: 20, marginBottom: 40, backgroundColor: '#FAF6F1' }}>
+                    <View className="flex-row items-center mb-6">
+                        <View className="w-10 h-10 rounded-xl bg-white items-center justify-center mr-4 shadow-sm">
+                            <Mail size={18} color="#4A3520" />
                         </View>
-                        <Text className="text-slate-200 font-medium">{user?.email}</Text>
+                        <Text className="text-secondary text-base font-bold">{user?.email}</Text>
                     </View>
                     <View className="flex-row items-center">
-                        <View className="w-8 h-8 rounded-lg bg-slate-900 items-center justify-center mr-4">
-                            <Shield size={16} color="#94A3B8" />
+                        <View className="w-10 h-10 rounded-xl bg-white items-center justify-center mr-4 shadow-sm">
+                            <Shield size={18} color="#4A3520" />
                         </View>
                         <View>
-                            <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Identifiant Utilisateur</Text>
-                            <Text className="text-slate-200 font-mono text-xs">{user?.id?.substring(0, 12)}...</Text>
+                            <Text className="text-secondary/40 text-[10px] font-black uppercase tracking-wider">Identifiant Elite</Text>
+                            <Text className="text-secondary/80 font-mono text-xs font-bold">{user?.id?.substring(0, 16).toUpperCase()}</Text>
                         </View>
                     </View>
                 </PremiumCard>
 
-                <View className="mb-10">
+                <View className="mb-12">
                     <Animated.Text 
                         entering={FadeIn.delay(600)}
-                        className="text-slate-500 text-[10px] font-black uppercase tracking-[3px] mb-6 ml-1"
+                        className="text-secondary/40 text-[xs] font-black uppercase tracking-[5px] mb-8 ml-2"
                     >
-                        Préférences Système
+                        Préférences
                     </Animated.Text>
                     
                     <MenuButton 
                         index={2}
                         icon={Bell} 
                         title="Notifications" 
-                        subtitle="Gérer les alertes et communications"
-                        color="#3B82F6"
+                        subtitle="Centrales d'alertes & flux"
+                        color="#E67E22"
+                        onPress={() => Alert.alert("Notifications", "Vous êtes à jour. Aucune nouvelle notification.")}
                     />
                     <MenuButton 
                         index={3}
                         icon={Shield} 
-                        title="Sécurité & Accès" 
-                        subtitle="Confidentialité et authentification"
-                        color="#A855F7"
+                        title="Sécurité" 
+                        subtitle="Changer votre mot de passe"
+                        color="#4A3520"
+                        onPress={() => setPasswordModalVisible(true)}
                     />
                     <MenuButton 
                         index={4}
                         icon={Settings} 
-                        title="Réglages" 
-                        subtitle="Interface et paramètres globaux"
-                        color="#64748B"
+                        title="Configuration" 
+                        subtitle="Interface & Paramètres LYNX"
+                        color="#7A8000"
+                        onPress={() => Alert.alert("Configuration", "Paramètres système synchronisés avec le cloud.")}
                     />
                 </View>
 
@@ -139,28 +239,120 @@ export default function ProfileScreen() {
                     activeOpacity={0.8}
                 >
                     <LinearGradient
-                        colors={['#EF4444', '#991B1B']}
+                        colors={['#4A3520', '#1A0F05']}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 0 }}
-                        style={{ borderRadius: 20, height: 60, alignItems: 'center', justifyContent: 'center' }}
+                        style={{ 
+                            borderRadius: 24, 
+                            height: 70, 
+                            alignItems: 'center', 
+                            justifyContent: 'center', 
+                            shadowColor: '#4A3520', 
+                            shadowOffset: { width: 0, height: 10 }, 
+                            shadowOpacity: 0.2, 
+                            shadowRadius: 15, 
+                            elevation: 8 
+                        }}
                     >
                         <View className="flex-row items-center">
-                            <LogOut size={20} color="white" strokeWidth={2.5} />
-                            <Text className="text-white font-black ml-3 text-base tracking-tight uppercase">Déconnexion</Text>
+                            <LogOut size={22} color="white" strokeWidth={3} />
+                            <Text className="text-white font-black ml-4 text-lg tracking-tight uppercase">Déconnexion Sécurisée</Text>
                         </View>
                     </LinearGradient>
                 </TouchableOpacity>
 
-                <Animated.View entering={FadeIn.delay(1000)} className="items-center mt-12 mb-8 opacity-40">
+                <Animated.View entering={FadeIn.delay(1000)} className="items-center mt-16 mb-8 opacity-60">
                     <Image 
                         source={require("../../assets/logo-lynx.png")}
-                        className="w-10 h-10 mb-3"
+                        className="w-12 h-12 mb-4"
                         resizeMode="contain"
                     />
-                    <Text className="text-slate-500 text-[10px] font-bold tracking-widest uppercase">LYNX Mobile Elite v1.2.0</Text>
-                    <Text className="text-slate-500 text-[9px] mt-1 font-medium">ECOTECH PRODUCTIONS © 2026</Text>
+                    <Text className="text-secondary/40 text-[11px] font-black tracking-[5px] uppercase">LYNX Elite v2.0.0</Text>
+                    <Text className="text-secondary/30 text-[10px] mt-2 font-bold italic">LYNX INDUSTRIES © 2026</Text>
                 </Animated.View>
             </ScrollView>
+
+            {/* Password Change Modal */}
+            {passwordModalVisible && (
+                <Animated.View entering={FadeIn} className="absolute inset-0 bg-black/60 justify-center items-center z-50 px-6">
+                    <Animated.View 
+                        entering={FadeInUp} 
+                        className="bg-slate-900 rounded-[40px] p-8 border border-white/10 w-full shadow-2xl"
+                    >
+                        <View className="flex-row justify-between items-center mb-8">
+                            <View>
+                                <Text className="text-white text-3xl font-black tracking-tight">Sécurité</Text>
+                                <Text className="text-slate-400 text-xs font-bold uppercase tracking-[2px] mt-1">Changer le mot de passe</Text>
+                            </View>
+                            <TouchableOpacity 
+                                onPress={() => setPasswordModalVisible(false)} 
+                                className="w-12 h-12 bg-slate-800 rounded-full items-center justify-center border border-white/10"
+                            >
+                                <X size={24} color="white" />
+                            </TouchableOpacity>
+                        </View>
+                        
+                        <View className="mb-6">
+                            <Text className="text-slate-500 text-[9px] font-black uppercase tracking-[2px] mb-3 ml-2">Mot de passe actuel</Text>
+                            <Input
+                                value={currentPassword}
+                                onChangeText={setCurrentPassword}
+                                secureTextEntry
+                                placeholder="••••••••"
+                                placeholderTextColor="#475569"
+                                className="bg-slate-800 h-16 text-white font-bold rounded-2xl border border-white/5"
+                            />
+                        </View>
+
+                        <View className="mb-6">
+                            <Text className="text-slate-500 text-[9px] font-black uppercase tracking-[2px] mb-3 ml-2">Nouveau mot de passe</Text>
+                            <Input
+                                value={newPassword}
+                                onChangeText={setNewPassword}
+                                secureTextEntry
+                                placeholder="••••••••"
+                                placeholderTextColor="#475569"
+                                className="bg-slate-800 h-16 text-white font-bold rounded-2xl border border-white/5"
+                            />
+                        </View>
+
+                        <View className="mb-10">
+                            <Text className="text-slate-500 text-[9px] font-black uppercase tracking-[2px] mb-3 ml-2">Confirmation</Text>
+                            <Input
+                                value={confirmPassword}
+                                onChangeText={setConfirmPassword}
+                                secureTextEntry
+                                placeholder="••••••••"
+                                placeholderTextColor="#475569"
+                                className="bg-slate-800 h-16 text-white font-bold rounded-2xl border border-white/5"
+                            />
+                        </View>
+
+                        <TouchableOpacity
+                            onPress={handleUpdatePassword}
+                            disabled={saving}
+                            activeOpacity={0.8}
+                            className="overflow-hidden rounded-2xl"
+                        >
+                            <LinearGradient
+                                colors={['#E67E22', '#D35400']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 1 }}
+                                style={{ height: 72, alignItems: 'center', justifyContent: 'center' }}
+                            >
+                                {saving ? (
+                                    <ActivityIndicator color="white" />
+                                ) : (
+                                    <View className="flex-row items-center">
+                                        <CheckCircle color="white" size={24} strokeWidth={3} className="mr-3" />
+                                        <Text className="text-white font-black text-lg uppercase tracking-wider ml-1">Mettre à jour</Text>
+                                    </View>
+                                )}
+                            </LinearGradient>
+                        </TouchableOpacity>
+                    </Animated.View>
+                </Animated.View>
+            )}
         </View>
     );
 }

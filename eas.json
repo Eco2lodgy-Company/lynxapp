@@ -11,9 +11,7 @@
     "preview": {
       "distribution": "internal"
     },
-    "production": {
-      "image": "ubuntu-22.04-jdk-17-ndk-r23b"
-    }
+    "production": {}
   },
   "submit": {
     "production": {}

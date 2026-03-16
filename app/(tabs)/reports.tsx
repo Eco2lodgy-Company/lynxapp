@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, RefreshControl, TouchableOpacity, ActivityIndicator, TextInput, Alert, Modal, StyleSheet, Platform } from 'react-native';
+import { View, Text, ScrollView, RefreshControl, TouchableOpacity, ActivityIndicator, TextInput, Alert, Modal, StyleSheet, Platform, Image } from 'react-native';
 import api from '../../lib/api';
 import { 
     ClipboardList, 
@@ -13,7 +13,9 @@ import {
     FileText,
     X,
     ChevronRight,
-    Filter
+    Filter,
+    AlertTriangle,
+    Package
 } from 'lucide-react-native';
 import { Input } from '../../components/ui/Input';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -21,7 +23,7 @@ import { useAuth } from '../../context/AuthContext';
 import { Button } from '../../components/ui/Button';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PremiumCard } from '../../components/ui/PremiumCard';
-import Animated, { FadeInDown, FadeInUp, Layout } from 'react-native-reanimated';
+import Animated, { FadeInDown, FadeInUp, Layout, FadeIn } from 'react-native-reanimated';
 import { BlurView } from 'expo-blur';
 
 const STATUS_LABELS: Record<string, string> = {
@@ -47,6 +49,7 @@ export default function ReportsScreen() {
     const [search, setSearch] = useState('');
     const [actionLoading, setActionLoading] = useState(false);
     const [rejectModal, setRejectModal] = useState<{ visible: boolean; logId: string | null }>({ visible: false, logId: null });
+    const [selectedLog, setSelectedLog] = useState<any>(null);
     const [counterNotes, setCounterNotes] = useState('');
 
     const canValidate = user?.role === 'CONDUCTEUR' || user?.role === 'ADMIN';
@@ -75,6 +78,7 @@ export default function ReportsScreen() {
         try {
             await api.patch(`/daily-logs/${logId}`, { status: 'VALIDE' });
             Alert.alert('✅ Validé', 'Le journal a été validé avec succès.');
+            setSelectedLog(null);
             fetchLogs();
         } catch (err: any) {
             Alert.alert('Erreur', err.response?.data?.error || 'Impossible de valider');
@@ -97,6 +101,7 @@ export default function ReportsScreen() {
             });
             Alert.alert('❌ Rejeté', 'Journal rejeté avec succès.');
             setRejectModal({ visible: false, logId: null });
+            setSelectedLog(null);
             setCounterNotes('');
             fetchLogs();
         } catch (err: any) {
@@ -114,79 +119,51 @@ export default function ReportsScreen() {
     const LogCard = ({ log, index }: { log: any, index: number }) => {
         const style = STATUS_STYLE[log.status] || STATUS_STYLE.BROUILLON;
         return (
-            <PremiumCard index={index} glass={true} style={{ padding: 18, marginBottom: 16 }}>
-                <View className="flex-row justify-between items-start mb-4">
-                    <View className="flex-1">
-                        <Text className="text-white font-black text-lg tracking-tight mb-1.5" numberOfLines={1}>
-                            {log.project?.name}
-                        </Text>
-                        <View className="flex-row items-center bg-white/5 self-start px-2.5 py-1 rounded-lg border border-white/5">
-                            <Calendar size={12} color="#94A3B8" strokeWidth={2.5} />
-                            <Text className="text-slate-400 text-[10px] font-black uppercase tracking-widest ml-2">
-                                {new Date(log.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+            <TouchableOpacity 
+                onPress={() => setSelectedLog(log)}
+                activeOpacity={0.8}
+            >
+                <PremiumCard index={index} glass={true} style={{ padding: 18, marginBottom: 16 }}>
+                    <View className="flex-row justify-between items-start mb-4">
+                        <View className="flex-1">
+                            <Text className="text-white font-black text-lg tracking-tight mb-1.5" numberOfLines={1}>
+                                {log.project?.name}
+                            </Text>
+                            <View className="flex-row items-center bg-white/5 self-start px-2.5 py-1 rounded-lg border border-white/5">
+                                <Calendar size={12} color="#94A3B8" strokeWidth={2.5} />
+                                <Text className="text-slate-400 text-[10px] font-black uppercase tracking-widest ml-2">
+                                    {new Date(log.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                                </Text>
+                            </View>
+                        </View>
+                        <View className={`px-3 py-1 transparent rounded-full border ${style.border}`}>
+                            <Text className={`text-[9px] font-black tracking-[1.5px] uppercase ${style.text}`}>
+                                {STATUS_LABELS[log.status] || log.status}
                             </Text>
                         </View>
                     </View>
-                    <View className={`px-3 py-1 transparent rounded-full border ${style.border}`}>
-                        <Text className={`text-[9px] font-black tracking-[1.5px] uppercase ${style.text}`}>
-                            {STATUS_LABELS[log.status] || log.status}
-                        </Text>
-                    </View>
-                </View>
 
-                {log.summary && (
-                    <Text className="text-slate-400 text-sm leading-5 mb-4" numberOfLines={2}>{log.summary}</Text>
-                )}
+                    {log.summary && (
+                        <Text className="text-slate-400 text-sm leading-5 mb-4" numberOfLines={2}>{log.summary}</Text>
+                    )}
 
-                {log.correctionNotes && log.status === 'REJETE' && (
-                    <View className="bg-red-500/10 border border-red-500/20 p-4 rounded-2xl mb-4">
-                        <View className="flex-row items-center mb-1.5">
-                            <XCircle size={14} color="#EF4444" strokeWidth={2.5} />
-                            <Text className="text-red-400 text-[10px] font-black uppercase tracking-widest ml-2">Contre-visite</Text>
-                        </View>
-                        <Text className="text-red-200/80 text-xs leading-5 font-medium">{log.correctionNotes}</Text>
-                    </View>
-                )}
-
-                <View className="flex-row items-center justify-between pt-4 border-t border-white/5">
-                    <View className="flex-row items-center">
-                        <View className="flex-row items-center mr-5">
-                            <CloudRain size={14} color="#C8842A" strokeWidth={2} />
-                            <Text className="text-slate-200 text-[11px] font-bold ml-2 uppercase tracking-tighter">{log.weather || '—'}</Text>
-                        </View>
+                    <View className="flex-row items-center justify-between pt-4 border-t border-white/5">
                         <View className="flex-row items-center">
-                            <Thermometer size={14} color="#C8842A" strokeWidth={2} />
-                            <Text className="text-slate-200 text-[11px] font-bold ml-1 uppercase">{log.temperature ? `${log.temperature}°C` : '—'}</Text>
+                            <View className="flex-row items-center mr-5">
+                                <CloudRain size={14} color="#C8842A" strokeWidth={2} />
+                                <Text className="text-slate-200 text-[11px] font-bold ml-2 uppercase tracking-tighter">{log.weather || '—'}</Text>
+                            </View>
+                            <View className="flex-row items-center">
+                                <Thermometer size={14} color="#C8842A" strokeWidth={2} />
+                                <Text className="text-slate-200 text-[11px] font-bold ml-1 uppercase">{log.temperature ? `${log.temperature}°C` : '—'}</Text>
+                            </View>
+                        </View>
+                        <View className="bg-white/5 px-2.5 py-1 rounded-lg border border-white/5">
+                            <Text className="text-slate-500 text-[9px] font-black uppercase tracking-widest">{log.author?.firstName}</Text>
                         </View>
                     </View>
-                    <View className="bg-white/5 px-2.5 py-1 rounded-lg border border-white/5">
-                        <Text className="text-slate-500 text-[9px] font-black uppercase tracking-widest">{log.author?.firstName}</Text>
-                    </View>
-                </View>
-
-                {canValidate && log.status === 'SOUMIS' && (
-                    <View className="flex-row mt-5 pt-5 border-t border-white/5 gap-3">
-                        <TouchableOpacity
-                            onPress={() => handleValidate(log.id)}
-                            disabled={actionLoading}
-                            activeOpacity={0.7}
-                            className="flex-1 h-12 flex-row items-center justify-center bg-emerald-500 rounded-xl shadow-lg shadow-emerald-500/20"
-                        >
-                            <CheckCircle2 size={16} color="#0F172A" strokeWidth={3} />
-                            <Text className="text-slate-900 font-black text-xs uppercase tracking-tight ml-2">Valider</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            onPress={() => { setRejectModal({ visible: true, logId: log.id }); setCounterNotes(''); }}
-                            disabled={actionLoading}
-                            activeOpacity={0.7}
-                            className="flex-1 h-12 flex-row items-center justify-center bg-slate-900 border border-red-500/30 rounded-xl"
-                        >
-                            <XCircle size={16} color="#EF4444" strokeWidth={2.5} />
-                            <Text className="text-red-400 font-black text-xs uppercase tracking-tight ml-2">Rejeter</Text>
-                        </TouchableOpacity>
-                    </View>
-                )}
-            </PremiumCard>
+                </PremiumCard>
+            </TouchableOpacity>
         );
     };
 
@@ -244,6 +221,132 @@ export default function ReportsScreen() {
                     </ScrollView>
                 )}
             </View>
+
+            {/* Log Detail Modal */}
+            {selectedLog && (
+                <View className="absolute inset-0 bg-black/95 z-40">
+                    <ScrollView 
+                        className="flex-1"
+                        contentContainerStyle={{ 
+                            paddingTop: insets.top + 20, 
+                            paddingBottom: insets.bottom + 120,
+                            paddingHorizontal: 24
+                        }}
+                    >
+                        <View className="flex-row justify-between items-center mb-8">
+                            <View className="flex-1 mr-4">
+                                <Text className="text-primary text-[10px] font-black uppercase tracking-[4px] mb-1">Détail du Journal</Text>
+                                <Text className="text-white text-3xl font-black tracking-tight leading-9">{selectedLog.project?.name}</Text>
+                            </View>
+                            <TouchableOpacity 
+                                onPress={() => setSelectedLog(null)}
+                                className="w-12 h-12 bg-white/5 rounded-2xl items-center justify-center border border-white/10"
+                            >
+                                <X size={24} color="#C8842A" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <View className="flex-row mb-10 gap-4">
+                            <View className="bg-white/5 px-4 py-3 rounded-2xl border border-white/5 flex-row items-center">
+                                <Calendar size={16} color="#C8842A" />
+                                <Text className="text-slate-300 font-bold ml-3 uppercase text-xs tracking-widest">
+                                    {new Date(selectedLog.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                </Text>
+                            </View>
+                            <View className="bg-white/5 px-4 py-3 rounded-2xl border border-white/5 flex-row items-center">
+                                <User size={16} color="#C8842A" />
+                                <Text className="text-slate-300 font-bold ml-3 uppercase text-xs tracking-widest">{selectedLog.author?.firstName}</Text>
+                            </View>
+                        </View>
+
+                        <View className="space-y-10">
+                            {/* Summary */}
+                            <View>
+                                <Text className="text-slate-500 text-[10px] font-black uppercase tracking-[3px] mb-4">Résumé de la journée</Text>
+                                <View className="bg-white/5 p-6 rounded-3xl border border-white/5">
+                                    <Text className="text-white text-base leading-7 font-medium">{selectedLog.summary}</Text>
+                                </View>
+                            </View>
+
+                            {/* Detailed Sections */}
+                            {[
+                                { label: "Travaux Réalisés", content: selectedLog.workCompleted, icon: CheckCircle2, color: "#10B981" },
+                                { label: "Problèmes Rencontrés", content: selectedLog.issues, icon: AlertTriangle, color: "#F43F5E" },
+                                { label: "Matériaux Utilisés", content: selectedLog.materials, icon: Package, color: "#818CF8" }
+                            ].map((section, idx) => section.content && (
+                                <View key={idx} className="mb-10">
+                                    <View className="flex-row items-center mb-4 ml-1">
+                                        <section.icon size={14} color={section.color} strokeWidth={3} />
+                                        <Text className="text-slate-500 text-[10px] font-black uppercase tracking-[3px] ml-3">{section.label}</Text>
+                                    </View>
+                                    <View className="bg-white/5 p-6 rounded-3xl border border-white/5">
+                                        <Text className="text-slate-300 text-sm leading-6">{section.content}</Text>
+                                    </View>
+                                </View>
+                            ))}
+
+                            {/* Photos */}
+                            {selectedLog.photos && selectedLog.photos.length > 0 && (
+                                <View className="mt-8">
+                                    <Text className="text-slate-500 text-[10px] font-black uppercase tracking-[3px] mb-5 ml-1">Photos du Journal</Text>
+                                    <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
+                                        {selectedLog.photos.map((photo: any, idx: number) => (
+                                            <View 
+                                                key={idx} 
+                                                className="mr-4 w-48 h-64 rounded-3xl overflow-hidden border border-white/10"
+                                            >
+                                                <Image 
+                                                    source={{ uri: `${process.env.EXPO_PUBLIC_API_URL}${photo.url}` }} 
+                                                    className="w-full h-full"
+                                                    resizeMode="cover"
+                                                />
+                                            </View>
+                                        ))}
+                                    </ScrollView>
+                                </View>
+                            )}
+                            
+                            {/* Rejection Notes if any */}
+                            {selectedLog.status === 'REJETE' && selectedLog.correctionNotes && (
+                                <View className="mt-8">
+                                    <View className="flex-row items-center mb-4 ml-1">
+                                        <XCircle size={14} color="#EF4444" strokeWidth={3} />
+                                        <Text className="text-red-500 text-[10px] font-black uppercase tracking-[3px] ml-3">Notes de Contre-visite</Text>
+                                    </View>
+                                    <View className="bg-red-500/5 p-6 rounded-3xl border border-red-500/10">
+                                        <Text className="text-red-200/80 text-sm leading-6 font-semibold italic">"{selectedLog.correctionNotes}"</Text>
+                                    </View>
+                                </View>
+                            )}
+                        </View>
+                    </ScrollView>
+
+                    {/* Actions Bar */}
+                    {canValidate && selectedLog.status === 'SOUMIS' && (
+                        <View className="absolute bottom-0 left-0 right-0 p-6 pb-10 border-t border-white/10 bg-slate-950/80">
+                            <View className="flex-row gap-4">
+                                <TouchableOpacity
+                                    onPress={() => handleValidate(selectedLog.id)}
+                                    disabled={actionLoading}
+                                    activeOpacity={0.8}
+                                    className="flex-1 h-16 flex-row items-center justify-center bg-emerald-500 rounded-2xl shadow-2xl shadow-emerald-500/20"
+                                >
+                                    <CheckCircle2 size={20} color="#0F172A" strokeWidth={3} />
+                                    <Text className="text-slate-900 font-black text-sm uppercase tracking-tight ml-3">Valider le Journal</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    onPress={() => { setRejectModal({ visible: true, logId: selectedLog.id }); setCounterNotes(''); }}
+                                    disabled={actionLoading}
+                                    activeOpacity={0.8}
+                                    className="w-16 h-16 items-center justify-center bg-slate-900 border border-red-500/30 rounded-2xl"
+                                >
+                                    <XCircle size={24} color="#EF4444" strokeWidth={2.5} />
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    )}
+                </View>
+            )}
 
             {/* Reject Modal */}
             {rejectModal.visible && (

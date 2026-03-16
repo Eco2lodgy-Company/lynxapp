@@ -1,17 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, RefreshControl, TouchableOpacity, ActivityIndicator, Alert, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, RefreshControl, TouchableOpacity, ActivityIndicator, Alert, StyleSheet, Modal, TextInput } from 'react-native';
 import api from '../lib/api';
-import { CheckSquare, Calendar, MoreVertical, PlayCircle, CheckCircle, Clock } from 'lucide-react-native';
+import { CheckSquare, Calendar, MoreVertical, PlayCircle, CheckCircle, Clock, Plus, X, ArrowUpRight, Target } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PremiumCard } from '../components/ui/PremiumCard';
-import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
+import Animated, { FadeInDown, FadeIn, FadeOut, SlideInUp } from 'react-native-reanimated';
+import { useAuth } from '../context/AuthContext';
+import { useRouter } from 'expo-router';
 
 export default function TasksScreen() {
+    const { user } = useAuth();
+    const router = useRouter();
     const [refreshing, setRefreshing] = useState(false);
     const [tasks, setTasks] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [actionLoading, setActionLoading] = useState(false);
     const insets = useSafeAreaInsets();
+
+    const [progressModal, setProgressModal] = useState<{ visible: boolean; task: any | null }>({ visible: false, task: null });
+    const [newProgress, setNewProgress] = useState('0');
+
+    const canManageTasks = user?.role === 'ADMIN' || user?.role === 'CONDUCTEUR';
 
     const fetchTasks = async () => {
         try {
@@ -34,40 +44,64 @@ export default function TasksScreen() {
         setRefreshing(false);
     }, []);
 
-    const updateTaskStatus = async (taskId: string, newStatus: string) => {
+    const updateTask = async (taskId: string, data: any) => {
+        setActionLoading(true);
         try {
-            await api.put(`/tasks/${taskId}`, { status: newStatus });
-            setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
-        } catch (error) {
+            await api.put(`/tasks/${taskId}`, data);
+            fetchTasks();
+            return true;
+        } catch (error: any) {
             console.error('Error updating task:', error);
-            Alert.alert('Erreur', 'Impossible de mettre à jour le statut de la tâche.');
-            fetchTasks(); 
+            Alert.alert('Erreur', error.response?.data?.error || 'Impossible de mettre à jour la tâche.');
+            return false;
+        } finally {
+            setActionLoading(false);
         }
     };
 
     const handleActionPress = (task: any) => {
-        const options = [];
+        if (!canManageTasks) return;
+
+        const options = [
+            { text: 'Mettre à jour l\'avancement (%)', onPress: () => {
+                setNewProgress(task.progress?.toString() || '0');
+                setProgressModal({ visible: true, task });
+            }}
+        ];
         
         if (task.status === 'A_FAIRE') {
-            options.push({ text: 'Commencer', onPress: () => updateTaskStatus(task.id, 'EN_COURS') });
+            options.push({ text: 'Commencer', onPress: () => updateTask(task.id, { status: 'EN_COURS' }) });
         } else if (task.status === 'EN_COURS') {
-            options.push({ text: 'Mettre en pause', onPress: () => updateTaskStatus(task.id, 'EN_ATTENTE') });
-            options.push({ text: 'Terminer', onPress: () => updateTaskStatus(task.id, 'TERMINE') });
+            options.push({ text: 'Mettre en pause', onPress: () => updateTask(task.id, { status: 'EN_ATTENTE' }) });
+            options.push({ text: 'Terminer (100%)', onPress: () => updateTask(task.id, { status: 'TERMINE', progress: 100 }) });
         } else if (task.status === 'EN_ATTENTE') {
-            options.push({ text: 'Reprendre', onPress: () => updateTaskStatus(task.id, 'EN_COURS') });
+            options.push({ text: 'Reprendre', onPress: () => updateTask(task.id, { status: 'EN_COURS' }) });
         }
 
         if (task.status !== 'TERMINE') {
-            options.push({ text: 'Terminer', onPress: () => updateTaskStatus(task.id, 'TERMINE') });
+            options.push({ text: 'Terminer Immédiatement', onPress: () => updateTask(task.id, { status: 'TERMINE', progress: 100 }) });
         }
 
         options.push({ text: 'Annuler', style: 'cancel' });
 
         Alert.alert(
-            'Action',
-            `Modifier le statut de "${task.title}"`,
+            'Options Supérieur',
+            `Gestion de "${task.title}"`,
             options as any
         );
+    };
+
+    const handleProgressUpdate = async () => {
+        const progress = parseFloat(newProgress);
+        if (isNaN(progress) || progress < 0 || progress > 100) {
+            Alert.alert('Invalide', 'Veuillez saisir un nombre entre 0 et 100.');
+            return;
+        }
+
+        const success = await updateTask(progressModal.task.id, { progress });
+        if (success) {
+            setProgressModal({ visible: false, task: null });
+        }
     };
 
     const getStatusInfo = (status: string) => {
@@ -84,24 +118,26 @@ export default function TasksScreen() {
     const TaskCard = ({ task, index }: { task: any, index: number }) => {
         const statusInfo = getStatusInfo(task.status);
         const isCompleted = task.status === 'TERMINE';
+        const progress = task.progress || 0;
 
         return (
-            <PremiumCard index={index} glass={true} style={{ padding: 16, marginBottom: 12 }}>
-                <View className="flex-row justify-between items-start mb-3">
+            <PremiumCard index={index} glass={true} style={{ padding: 18, marginBottom: 16 }}>
+                <View className="flex-row justify-between items-start mb-4">
                     <View className="flex-1 mr-4">
-                        <Text className={`font-black text-lg tracking-tight mb-1 ${isCompleted ? 'text-slate-600 line-through opacity-50' : 'text-white'}`}>
+                        <Text className={`font-black text-lg tracking-tight mb-1.5 ${isCompleted ? 'text-slate-600 line-through opacity-50' : 'text-white'}`}>
                             {task.title}
                         </Text>
                         <View className="flex-row items-center">
-                            <View className="w-1 h-1 rounded-full bg-primary/40 mr-2" />
-                            <Text className="text-primary text-[10px] font-black uppercase tracking-widest">{task.project?.name || 'Projet Général'}</Text>
+                            <Target size={12} color="#C8842A" strokeWidth={3} />
+                            <Text className="text-slate-400 text-[10px] font-black uppercase tracking-widest ml-2">{task.project?.name || 'Projet Général'}</Text>
                         </View>
                     </View>
                     
-                    {!isCompleted && (
+                    {canManageTasks && (
                         <TouchableOpacity 
                             onPress={() => handleActionPress(task)} 
-                            className="w-10 h-10 bg-slate-900 rounded-xl items-center justify-center border border-white/5"
+                            className="w-12 h-12 bg-white/5 rounded-2xl items-center justify-center border border-white/10"
+                            activeOpacity={0.7}
                         >
                             <MoreVertical size={20} color="#C8842A" />
                         </TouchableOpacity>
@@ -109,24 +145,39 @@ export default function TasksScreen() {
                 </View>
 
                 {task.description && (
-                    <Text className={`text-sm leading-5 mb-4 font-medium ${isCompleted ? 'text-slate-700' : 'text-slate-400'}`} numberOfLines={2}>
+                    <Text className={`text-sm leading-6 mb-6 font-medium ${isCompleted ? 'text-slate-700' : 'text-slate-400'}`} numberOfLines={3}>
                         {task.description}
                     </Text>
                 )}
 
-                <View className="flex-row items-center justify-between pt-4 border-t border-white/5 mt-1">
-                    <View style={{ backgroundColor: statusInfo.bg }} className="px-3 py-1.5 rounded-lg flex-row items-center border border-white/5">
+                {/* Progress Bar */}
+                <View className="mb-6">
+                    <View className="flex-row justify-between items-end mb-2">
+                        <Text className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Progression</Text>
+                        <Text className={`text-[12px] font-black ${isCompleted ? 'text-emerald-500' : 'text-white'}`}>{Math.round(progress)}%</Text>
+                    </View>
+                    <View className="h-2 bg-white/5 rounded-full overflow-hidden border border-white/5">
+                        <Animated.View 
+                            entering={FadeIn.delay(400)}
+                            className={`h-full rounded-full ${isCompleted ? 'bg-emerald-500' : 'bg-primary'}`} 
+                            style={{ width: `${progress}%` }} 
+                        />
+                    </View>
+                </View>
+
+                <View className="flex-row items-center justify-between pt-5 border-t border-white/5">
+                    <View style={{ backgroundColor: statusInfo.bg }} className="px-3 py-1.5 rounded-xl flex-row items-center border border-white/5">
                         {statusInfo.icon}
-                        <Text style={{ color: statusInfo.color }} className="text-[10px] ml-2 font-black uppercase tracking-wider">
+                        <Text style={{ color: statusInfo.color }} className="text-[10px] ml-2 font-black uppercase tracking-widest">
                             {statusInfo.label}
                         </Text>
                     </View>
                     
                     {task.dueDate && (
-                        <View className="flex-row items-center bg-slate-950/30 px-3 py-1.5 rounded-lg border border-white/5">
+                        <View className="flex-row items-center bg-white/5 px-3 py-1.5 rounded-xl border border-white/5">
                             <Calendar size={12} color={isCompleted ? '#334155' : '#94A3B8'} />
-                            <Text className={`text-[10px] ml-2 font-black uppercase tracking-wider ${isCompleted ? 'text-slate-700 font-bold' : 'text-slate-400'}`}>
-                                {new Date(task.dueDate).toLocaleDateString()}
+                            <Text className={`text-[10px] ml-2 font-black uppercase tracking-widest ${isCompleted ? 'text-slate-700' : 'text-slate-400'}`}>
+                                {new Date(task.dueDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
                             </Text>
                         </View>
                     )}
@@ -144,9 +195,9 @@ export default function TasksScreen() {
                 end={{ x: 1, y: 1 }}
             />
             
-            <View className="px-5 mb-10" style={{ paddingTop: Math.max(insets.top, 24) }}>
-                <Text className="text-slate-500 text-[10px] font-black uppercase tracking-[4px] mb-1">Missions & Objectifs</Text>
-                <Text className="text-white text-4xl font-black tracking-tight">Tâches</Text>
+            <View className="px-6 mb-8" style={{ paddingTop: Math.max(insets.top, 24) }}>
+                <Text className="text-slate-500 text-[11px] font-black uppercase tracking-[5px] mb-2 opacity-60">Operations</Text>
+                <Text className="text-white text-4xl font-black tracking-tight">Missions</Text>
             </View>
 
             {loading ? (
@@ -154,34 +205,142 @@ export default function TasksScreen() {
                     <ActivityIndicator color="#C8842A" size="large" />
                 </View>
             ) : (
-                <ScrollView
-                    className="flex-1 px-5"
-                    contentContainerStyle={{ paddingBottom: 120 }}
-                    refreshControl={
-                        <RefreshControl 
-                            refreshing={refreshing} 
-                            onRefresh={onRefresh} 
-                            tintColor="#C8842A" 
-                            colors={['#C8842A']} 
-                        />
-                    }
-                    showsVerticalScrollIndicator={false}
+                <View className="flex-1">
+                    <ScrollView
+                        className="flex-1 px-5"
+                        contentContainerStyle={{ paddingBottom: 140 }}
+                        refreshControl={
+                            <RefreshControl 
+                                refreshing={refreshing} 
+                                onRefresh={onRefresh} 
+                                tintColor="#C8842A" 
+                            />
+                        }
+                        showsVerticalScrollIndicator={false}
+                    >
+                        {tasks.length === 0 ? (
+                            <Animated.View entering={FadeIn.delay(300)} className="items-center justify-center py-32">
+                                <View className="w-28 h-28 bg-white/5 rounded-[40px] items-center justify-center mb-8 border border-white/10">
+                                    <CheckSquare size={48} color="#1e293b" strokeWidth={1} />
+                                </View>
+                                <Text className="text-white font-black text-2xl mb-3">Table rase</Text>
+                                <Text className="text-slate-500 text-center text-sm font-medium px-10 leading-6">
+                                    Aucune mission ne vous est assignée pour le moment.
+                                </Text>
+                            </Animated.View>
+                        ) : (
+                            tasks.map((task, idx) => (
+                                <TaskCard key={task.id} task={task} index={idx} />
+                            ))
+                        )}
+                    </ScrollView>
+
+                    {/* Progress Modal */}
+                    <Modal
+                        visible={progressModal.visible}
+                        transparent
+                        animationType="slide"
+                        onRequestClose={() => setProgressModal({ visible: false, task: null })}
+                    >
+                        <View className="flex-1 bg-black/80 justify-end">
+                            <TouchableOpacity 
+                                className="absolute inset-0"
+                                onPress={() => setProgressModal({ visible: false, task: null })}
+                            />
+                            <Animated.View 
+                                entering={SlideInUp}
+                                className="bg-slate-900 rounded-t-[40px] p-8 border-t border-white/10 shadow-2xl"
+                                style={{ paddingBottom: Math.max(insets.bottom, 40) }}
+                            >
+                                <View className="w-12 h-1.5 bg-white/10 rounded-full self-center mb-8" />
+                                
+                                <View className="flex-row justify-between items-start mb-10">
+                                    <View className="flex-1 mr-4">
+                                        <Text className="text-primary text-[10px] font-black uppercase tracking-widest mb-1.5">Mise à jour</Text>
+                                        <Text className="text-white text-2xl font-black tracking-tight" numberOfLines={2}>
+                                            {progressModal.task?.title}
+                                        </Text>
+                                    </View>
+                                    <TouchableOpacity 
+                                        onPress={() => setProgressModal({ visible: false, task: null })}
+                                        className="w-10 h-10 bg-white/5 rounded-full items-center justify-center border border-white/5"
+                                    >
+                                        <X size={20} color="#64748B" />
+                                    </TouchableOpacity>
+                                </View>
+
+                                <View className="mb-10">
+                                    <View className="flex-row justify-between items-center mb-4">
+                                        <Text className="text-slate-500 text-xs font-black uppercase tracking-widest">Avancement (%)</Text>
+                                        <Text className="text-primary text-2xl font-black">{newProgress}%</Text>
+                                    </View>
+                                    
+                                    <View className="bg-white/5 rounded-3xl border border-white/5 p-6 flex-row items-center justify-between">
+                                        <TouchableOpacity 
+                                            onPress={() => setNewProgress(Math.max(0, parseInt(newProgress) - 10).toString())}
+                                            className="w-14 h-14 bg-white/5 rounded-2xl items-center justify-center border border-white/5"
+                                        >
+                                            <Text className="text-white text-2xl font-bold">-10</Text>
+                                        </TouchableOpacity>
+                                        
+                                        <TextInput
+                                            className="text-white text-5xl font-black text-center flex-1"
+                                            keyboardType="numeric"
+                                            value={newProgress}
+                                            onChangeText={setNewProgress}
+                                            maxLength={3}
+                                            selectionColor="#C8842A"
+                                        />
+
+                                        <TouchableOpacity 
+                                            onPress={() => setNewProgress(Math.min(100, parseInt(newProgress || '0') + 10).toString())}
+                                            className="w-14 h-14 bg-white/5 rounded-2xl items-center justify-center border border-white/5"
+                                        >
+                                            <Text className="text-white text-2xl font-bold">+10</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+
+                                <TouchableOpacity
+                                    onPress={handleProgressUpdate}
+                                    disabled={actionLoading}
+                                    activeOpacity={0.8}
+                                >
+                                    <LinearGradient
+                                        colors={['#C8842A', '#E2A856']}
+                                        start={{ x: 0, y: 0 }}
+                                        end={{ x: 1, y: 1 }}
+                                        style={{ height: 64, borderRadius: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
+                                    >
+                                        {actionLoading ? (
+                                            <ActivityIndicator color="white" />
+                                        ) : (
+                                            <>
+                                                <ArrowUpRight color="white" size={20} strokeWidth={3} className="mr-3" />
+                                                <Text className="text-white font-black text-lg uppercase tracking-tight">Enregistrer l'avancée</Text>
+                                            </>
+                                        )}
+                                    </LinearGradient>
+                                </TouchableOpacity>
+                            </Animated.View>
+                        </View>
+                    </Modal>
+                </View>
+            )}
+
+            {/* FAB for creation */}
+            {canManageTasks && (
+                <TouchableOpacity
+                    onPress={() => router.push('/admin/task-form')}
+                    activeOpacity={0.9}
+                    className="absolute bottom-24 right-6 w-16 h-16 rounded-[24px] bg-secondary items-center justify-center shadow-2xl shadow-secondary/50"
+                    style={{ elevation: 8 }}
                 >
-                    {tasks.length === 0 ? (
-                        <Animated.View entering={FadeIn.delay(300)} className="items-center justify-center py-20">
-                            <View className="w-24 h-24 bg-slate-900 rounded-[35px] items-center justify-center mb-6 border border-white/5">
-                                <CheckSquare size={48} color="#1e293b" strokeWidth={1.5} />
-                            </View>
-                            <Text className="text-white font-black text-xl mb-2">Libre d'esprit</Text>
-                            <Text className="text-slate-500 text-center text-sm font-medium">Vous n'avez pas de tâche immédiate. Prenez de l'avance !</Text>
-                        </Animated.View>
-                    ) : (
-                        tasks.map((task, idx) => (
-                            <TaskCard key={task.id} task={task} index={idx} />
-                        ))
-                    )}
-                </ScrollView>
+                    <Plus size={32} color="white" strokeWidth={3} />
+                </TouchableOpacity>
             )}
         </View>
     );
 }
+
+const styles = StyleSheet.create({});

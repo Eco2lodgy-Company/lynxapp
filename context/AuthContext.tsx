@@ -17,6 +17,7 @@ interface AuthContextType {
     loading: boolean;
     login: (email: string, password: string) => Promise<void>;
     logout: () => Promise<void>;
+    updateUser: (newData: Partial<User>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -38,13 +39,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (storedToken && storedUser) {
                 setToken(storedToken);
                 setUser(JSON.parse(storedUser));
-                // Optionnel: Vérifier si le token est encore valide avec une route 'me'
             }
         } catch (error) {
             console.error("Error loading stored auth:", error);
         } finally {
             setLoading(false);
         }
+    };
+
+    const updateUser = async (newData: Partial<User>) => {
+        if (!user) return;
+        const updatedUser = { ...user, ...newData };
+        setUser(updatedUser);
+        await SecureStore.setItemAsync("auth_user", JSON.stringify(updatedUser));
     };
 
     const login = async (email: string, password: string) => {
@@ -77,7 +84,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     return (
-        <AuthContext.Provider value={{ user, token, loading, login, logout }}>
+        <AuthContext.Provider value={{ user, token, loading, login, logout, updateUser }}>
             {children}
         </AuthContext.Provider>
     );

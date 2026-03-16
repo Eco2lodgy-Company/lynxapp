@@ -1,17 +1,20 @@
 import React, { useEffect, useState, useRef } from 'react';
 import {
     View, Text, ScrollView, TextInput, TouchableOpacity,
-    KeyboardAvoidingView, Platform, ActivityIndicator, Alert, Image, StyleSheet
+    KeyboardAvoidingView, Platform, ActivityIndicator, Alert, Image, StyleSheet, Dimensions
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import api from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
-import { ChevronLeft, Send, Paperclip, Camera, MapPin, Clock, MoreVertical, X } from 'lucide-react-native';
+import { ChevronLeft, Send, Paperclip, Camera, MapPin, Clock, MoreVertical, X, AlertTriangle, ChevronRight } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
-import Animated, { FadeIn, FadeInDown, SlideInRight, Layout } from 'react-native-reanimated';
+import { Video, ResizeMode } from 'expo-av';
+import Animated, { FadeIn, FadeInDown, SlideInRight, Layout, SlideInUp, FadeOut } from 'react-native-reanimated';
+
+const { width } = Dimensions.get('window');
 
 export default function ConversationScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
@@ -27,6 +30,12 @@ export default function ConversationScreen() {
     const [sending, setSending] = useState(false);
     const [attachments, setAttachments] = useState<{uri: string, type: string, name: string}[]>([]);
 
+    // Mention logic
+    const [showIncidentsMenu, setShowIncidentsMenu] = useState(false);
+    const [incidents, setIncidents] = useState<any[]>([]);
+    const [loadingIncidents, setLoadingIncidents] = useState(false);
+    const [linkedIncident, setLinkedIncident] = useState<any>(null);
+
     const fetchMessages = async () => {
         try {
             const res = await api.get(`/conversations/${id}`);
@@ -36,6 +45,19 @@ export default function ConversationScreen() {
             console.error('Error loading conversation:', err);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchIncidents = async () => {
+        setLoadingIncidents(true);
+        try {
+            const res = await api.get('/incidents');
+            // Filter active ones
+            setIncidents(res.data.filter((inc: any) => inc.status === 'OUVERT' || inc.status === 'EN_COURS'));
+        } catch (err) {
+            console.error('Error loading incidents:', err);
+        } finally {
+            setLoadingIncidents(false);
         }
     };
 
@@ -49,13 +71,37 @@ export default function ConversationScreen() {
         setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 300);
     }, [messages.length]);
 
+    const handleTextChange = (val: string) => {
+        setText(val);
+        if (val.endsWith('/') && (user?.role === 'ADMIN' || user?.role === 'CONDUCTEUR' || user?.role === 'CHEF_EQUIPE')) {
+            setShowIncidentsMenu(true);
+            fetchIncidents();
+        } else if (showIncidentsMenu && !val.includes('/')) {
+            setShowIncidentsMenu(false);
+        }
+    };
+
+    const selectIncident = (incident: any) => {
+        setLinkedIncident(incident);
+        setShowIncidentsMenu(false);
+        // Remove the '/' from text
+        if (text.endsWith('/')) {
+            setText(text.slice(0, -1));
+        }
+    };
+
     const sendMessage = async () => {
-        if (!text.trim() && attachments.length === 0) return;
+        if (!text.trim() && attachments.length === 0 && !linkedIncident) return;
         setSending(true);
         const messageText = text.trim();
+        const currentIncident = linkedIncident;
         setText('');
+        setLinkedIncident(null);
+
         try {
-            let uploadedUrls: string[] = [];
+            let uploadedUrls: any[] = [];
+            
+            // Handle media attachments
             for (const att of attachments) {
                 const formData = new FormData();
                 formData.append('file', {
@@ -72,6 +118,16 @@ export default function ConversationScreen() {
                 }
             }
 
+            // Add linked incident to attachments metadata
+            if (currentIncident) {
+                uploadedUrls.push({
+                    type: 'incident_mention',
+                    incidentId: currentIncident.id,
+                    title: currentIncident.title,
+                    severity: currentIncident.severity
+                });
+            }
+
             await api.post('/messages', {
                 conversationId: id,
                 content: messageText,
@@ -82,6 +138,7 @@ export default function ConversationScreen() {
         } catch (err: any) {
             Alert.alert('Erreur', err.response?.data?.error || 'Impossible d\'envoyer le message');
             setText(messageText);
+            setLinkedIncident(currentIncident);
         } finally {
             setSending(false);
         }
@@ -163,36 +220,52 @@ export default function ConversationScreen() {
             ? `${conversation.members.filter((m: any) => m.userId !== user?.id)[0].user.firstName} ${conversation.members.filter((m: any) => m.userId !== user?.id)[0].user.lastName}`
             : 'Discussion');
 
+    const IncidentMentionCard = ({ incident, isMe }: { incident: any, isMe: boolean }) => (
+        <TouchableOpacity 
+            onPress={() => router.push('/incidents')}
+            className={`mt-2 p-4 rounded-2xl border flex-row items-center ${isMe ? 'bg-white/10 border-white/20' : 'bg-white border-slate-100'}`}
+        >
+            <View className="w-10 h-10 rounded-xl bg-red-500/20 items-center justify-center mr-3">
+                <AlertTriangle size={20} color={isMe ? '#FFF' : '#EF4444'} />
+            </View>
+            <View className="flex-1">
+                <Text className={`text-[10px] font-black uppercase tracking-widest ${isMe ? 'text-white/60' : 'text-slate-400'}`}>Incident Mentionné</Text>
+                <Text className={`font-black text-sm ${isMe ? 'text-white' : 'text-secondary'}`} numberOfLines={1}>{incident.title}</Text>
+            </View>
+            <ChevronRight size={16} color={isMe ? '#FFF' : '#4A3520'} />
+        </TouchableOpacity>
+    );
+
     return (
         <KeyboardAvoidingView
-            className="flex-1 bg-slate-950"
+            className="flex-1 bg-white"
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             keyboardVerticalOffset={0}
         >
             <LinearGradient
-                colors={['#1e293b', '#0f172a', '#020617']}
+                colors={['#FFFFFF', '#FDFCFB', '#F8F9FA']}
                 style={StyleSheet.absoluteFill}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
             />
 
             {/* Header */}
-            <BlurView intensity={Platform.OS === 'ios' ? 80 : 100} tint="dark" style={{ paddingTop: insets.top }}>
-                <View className="flex-row items-center px-5 py-4 border-b border-white/5">
-                    <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 bg-white/5 rounded-xl items-center justify-center border border-white/5 mr-4">
-                        <ChevronLeft size={22} color="#C8842A" strokeWidth={2.5} />
+            <BlurView intensity={Platform.OS === 'ios' ? 90 : 100} tint="light" style={{ paddingTop: insets.top }}>
+                <View className="flex-row items-center px-5 py-5 border-b border-border-light/50">
+                    <TouchableOpacity onPress={() => router.back()} className="w-11 h-11 bg-bg-soft rounded-2xl items-center justify-center border border-border-light mr-4">
+                        <ChevronLeft size={24} color="#E67E22" strokeWidth={3} />
                     </TouchableOpacity>
                     <View className="flex-1">
-                        <Text className="text-white font-black text-lg tracking-tight" numberOfLines={1}>{displayName}</Text>
+                        <Text className="text-secondary font-black text-xl tracking-tight" numberOfLines={1}>{displayName}</Text>
                         <View className="flex-row items-center mt-0.5">
-                            <View className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-2 shadow-sm shadow-emerald-500" />
-                            <Text className="text-slate-500 text-[10px] font-black uppercase tracking-widest" numberOfLines={1}>
-                                {conversation?.project ? conversation.project.name : 'Canal Sécurisé'}
+                            <View className="w-2 h-2 rounded-full bg-emerald-500 mr-2 shadow-sm shadow-emerald-500/50" />
+                            <Text className="text-secondary/40 text-[10px] font-black uppercase tracking-[3px]" numberOfLines={1}>
+                                {conversation?.project ? conversation.project.name : 'CANAL SÉCURISÉ LYNX'}
                             </Text>
                         </View>
                     </View>
-                    <TouchableOpacity className="w-10 h-10 bg-white/5 rounded-xl items-center justify-center border border-white/5">
-                        <MoreVertical size={20} color="#64748B" />
+                    <TouchableOpacity className="w-11 h-11 bg-bg-soft rounded-2xl items-center justify-center border border-border-light">
+                        <MoreVertical size={22} color="#A08060" />
                     </TouchableOpacity>
                 </View>
             </BlurView>
@@ -200,76 +273,100 @@ export default function ConversationScreen() {
             {/* Messages */}
             {loading ? (
                 <View className="flex-1 items-center justify-center">
-                    <ActivityIndicator color="#C8842A" size="large" />
+                    <ActivityIndicator color="#E67E22" size="large" />
                 </View>
             ) : (
                 <ScrollView
                     ref={scrollRef}
                     className="flex-1"
-                    contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 20 }}
+                    contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 24, paddingBottom: 24 }}
                     showsVerticalScrollIndicator={false}
                 >
                     {groupedMessages.length === 0 ? (
-                        <View className="flex-1 items-center justify-center py-24">
-                            <View className="w-20 h-20 bg-slate-900 rounded-[30px] items-center justify-center mb-6 border border-white/5">
-                                <Send size={32} color="#1e293b" strokeWidth={1.5} />
+                        <View className="flex-1 items-center justify-center py-24 opacity-20">
+                            <View className="w-24 h-24 bg-bg-soft rounded-[40px] items-center justify-center mb-8">
+                                <Send size={40} color="#4A3520" strokeWidth={1.5} />
                             </View>
-                            <Text className="text-slate-500 font-black text-xs uppercase tracking-[3px] text-center px-10">
-                                Début de la transmission
+                            <Text className="text-secondary font-black text-xs uppercase tracking-[4px] text-center px-10">
+                                INITIALISATION DE LA TRANSMISSION
                             </Text>
                         </View>
                     ) : (
                         groupedMessages.map((group, gi) => (
                             <View key={gi}>
-                                <View className="flex-row items-center my-8">
-                                    <View className="flex-1 h-[1px] bg-white/5" />
-                                    <View className="bg-slate-900/80 px-4 py-1.5 rounded-full border border-white/5 mx-4">
-                                        <Text className="text-slate-500 text-[9px] font-black uppercase tracking-[2px]">{group.date}</Text>
+                                <View className="flex-row items-center my-10">
+                                    <View className="flex-1 h-[1px] bg-border-light/40" />
+                                    <View className="bg-bg-soft px-5 py-2 rounded-2xl border border-border-light mx-4 shadow-sm">
+                                        <Text className="text-secondary/50 text-[10px] font-black uppercase tracking-[3px]">{group.date}</Text>
                                     </View>
-                                    <View className="flex-1 h-[1px] bg-white/5" />
+                                    <View className="flex-1 h-[1px] bg-border-light/40" />
                                 </View>
                                 {group.items.map((msg: any, idx: number) => {
                                     const isMe = msg.authorId === user?.id;
-                                    const attachments = msg.attachments ? (typeof msg.attachments === 'string' ? JSON.parse(msg.attachments) : msg.attachments) : [];
+                                    const rawAttachments = msg.attachments ? (typeof msg.attachments === 'string' ? JSON.parse(msg.attachments) : msg.attachments) : [];
                                     
+                                    const mediaAttachments = rawAttachments.filter((alt: any) => typeof alt === 'string');
+                                    const mentionAttachments = rawAttachments.filter((alt: any) => typeof alt === 'object' && alt.type === 'incident_mention');
+
                                     return (
                                         <Animated.View 
                                             key={msg.id} 
                                             entering={FadeInDown.delay(idx * 50)}
                                             layout={Layout.springify()}
-                                            className={`mb-6 max-w-[85%] ${isMe ? 'self-end items-end' : 'self-start items-start'}`}
+                                            className={`mb-8 max-w-[88%] ${isMe ? 'self-end items-end' : 'self-start items-start'}`}
                                         >
                                             {!isMe && (
-                                                <Text className="text-slate-500 text-[9px] font-black uppercase tracking-widest mb-1.5 ml-2">
+                                                <Text className="text-secondary/40 text-[10px] font-black uppercase tracking-[3px] mb-2 ml-3">
                                                     {msg.author?.firstName} {msg.author?.lastName}
                                                 </Text>
                                             )}
                                             
-                                            <View className={`p-1 rounded-[28px] ${isMe ? 'bg-primary/10 border border-primary/20' : 'bg-slate-900/80 border border-white/5'}`}>
-                                                {attachments.length > 0 && (
+                                            <View className={`p-1.5 rounded-[30px] shadow-sm ${isMe ? 'bg-primary border border-primary/20' : 'bg-bg-soft border border-border-light'}`}>
+                                                {mediaAttachments.length > 0 && (
                                                     <View className="mb-1">
-                                                        {attachments.map((url: string, i: number) => (
-                                                            <Image
-                                                                key={i}
-                                                                source={{ uri: url }}
-                                                                className="w-64 h-64 rounded-[24px]"
-                                                                resizeMode="cover"
-                                                            />
-                                                        ))}
+                                                        {mediaAttachments.map((url: string, i: number) => {
+                                                            const isVideo = url.toLowerCase().endsWith('.mp4') || url.toLowerCase().endsWith('.mov');
+                                                            return (
+                                                                <View key={i} className="w-72 h-72 rounded-[25px] overflow-hidden bg-black/5 items-center justify-center">
+                                                                    {isVideo ? (
+                                                                        <Video
+                                                                            source={{ uri: `${process.env.EXPO_PUBLIC_API_URL}${url}` }}
+                                                                            useNativeControls
+                                                                            resizeMode={ResizeMode.COVER}
+                                                                            style={{ width: '100%', height: '100%' }}
+                                                                        />
+                                                                    ) : (
+                                                                        <Image
+                                                                            source={{ uri: `${process.env.EXPO_PUBLIC_API_URL}${url}` }}
+                                                                            className="w-full h-full"
+                                                                            resizeMode="cover"
+                                                                        />
+                                                                    )}
+                                                                </View>
+                                                            );
+                                                        })}
                                                     </View>
                                                 )}
-                                                <View className="px-4 py-3">
-                                                    <Text className={`text-[15px] leading-6 font-medium ${isMe ? 'text-primary' : 'text-slate-200'}`}>
-                                                        {msg.content}
-                                                    </Text>
-                                                </View>
+                                                {msg.content ? (
+                                                    <View className="px-5 py-4">
+                                                        <Text className={`text-[15px] leading-6 font-bold ${isMe ? 'text-white' : 'text-secondary'}`}>
+                                                            {msg.content}
+                                                        </Text>
+                                                    </View>
+                                                ) : null}
+
+                                                {mentionAttachments.length > 0 && (
+                                                    mentionAttachments.map((inc: any, ii: number) => (
+                                                        <IncidentMentionCard key={ii} incident={inc} isMe={isMe} />
+                                                    ))
+                                                )}
                                             </View>
 
-                                            <View className={`flex-row items-center mt-1.5 mx-2 ${isMe ? 'flex-row-reverse' : ''}`}>
-                                                <Text className="text-slate-600 text-[9px] font-black tracking-widest uppercase">
+                                            <View className={`flex-row items-center mt-2 mx-3 ${isMe ? 'flex-row-reverse' : ''}`}>
+                                                <Text className="text-secondary/30 text-[9px] font-black tracking-[2px] uppercase">
                                                     {formatTime(msg.createdAt)}
                                                 </Text>
-                                                {isMe && <View className="w-1 h-1 rounded-full bg-primary mx-1.5 opacity-50" />}
+                                                {isMe && <View className="w-1.5 h-1.5 rounded-full bg-primary mx-2 opacity-40" />}
                                             </View>
                                         </Animated.View>
                                     );
@@ -280,53 +377,102 @@ export default function ConversationScreen() {
                 </ScrollView>
             )}
 
+            {/* Incident Selection Menu */}
+            {showIncidentsMenu && (
+                <Animated.View entering={SlideInUp} exiting={FadeOut} className="absolute bottom-24 left-5 right-5 z-50">
+                    <BlurView intensity={100} tint="dark" className="rounded-[30px] overflow-hidden border border-white/10 shadow-2xl">
+                        <View className="p-5 border-b border-white/5 flex-row justify-between items-center">
+                            <Text className="text-white font-black text-xs uppercase tracking-[3px]">Mentionner Incident</Text>
+                            <TouchableOpacity onPress={() => setShowIncidentsMenu(false)}>
+                                <X size={18} color="white" />
+                            </TouchableOpacity>
+                        </View>
+                        <ScrollView style={{ maxHeight: 300 }}>
+                            {loadingIncidents ? (
+                                <ActivityIndicator color="#E67E22" className="my-10" />
+                            ) : incidents.length === 0 ? (
+                                <Text className="text-slate-500 text-center py-10 italic">Aucun incident ouvert</Text>
+                            ) : incidents.map(inc => (
+                                <TouchableOpacity 
+                                    key={inc.id}
+                                    onPress={() => selectIncident(inc)}
+                                    className="p-5 border-b border-white/5 flex-row items-center"
+                                >
+                                    <View className="w-10 h-10 rounded-xl bg-red-500/20 items-center justify-center mr-4">
+                                        <AlertTriangle size={20} color="#EF4444" />
+                                    </View>
+                                    <View className="flex-1">
+                                        <Text className="text-white font-bold" numberOfLines={1}>{inc.title}</Text>
+                                        <Text className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">{inc.project.name}</Text>
+                                    </View>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                    </BlurView>
+                </Animated.View>
+            )}
+
             {/* Input Bar */}
-            <BlurView intensity={Platform.OS === 'ios' ? 90 : 100} tint="dark" style={{ paddingBottom: Math.max(insets.bottom, 20) }}>
+            <BlurView intensity={Platform.OS === 'ios' ? 95 : 100} tint="light" style={{ paddingBottom: Math.max(insets.bottom, 20) }} className="border-t border-border-light/50">
+                {linkedIncident && (
+                    <Animated.View entering={FadeIn} className="px-5 py-3 bg-primary/10 flex-row items-center justify-between border-b border-primary/20">
+                        <View className="flex-row items-center flex-1">
+                            <AlertTriangle size={14} color="#C8842A" />
+                            <Text className="text-primary font-black text-xs ml-3" numberOfLines={1}>Lié à: {linkedIncident.title}</Text>
+                        </View>
+                        <TouchableOpacity onPress={() => setLinkedIncident(null)}>
+                            <X size={16} color="#C8842A" />
+                        </TouchableOpacity>
+                    </Animated.View>
+                )}
+
                 {attachments.length > 0 && (
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} className="px-5 py-4 border-b border-white/5">
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} className="px-5 py-5 bg-white/50">
                         {attachments.map((att, i) => (
-                            <View key={i} className="mr-4 relative">
-                                <Image source={{ uri: att.uri }} className="w-20 h-20 rounded-2xl border border-white/10" />
+                            <View key={i} className="mr-5 relative">
+                                <View className="w-24 h-24 rounded-[24px] border border-border-light overflow-hidden shadow-sm">
+                                    <Image source={{ uri: att.uri }} className="w-full h-full" />
+                                </View>
                                 <TouchableOpacity 
                                     onPress={() => setAttachments(prev => prev.filter((_, idx) => idx !== i))}
-                                    className="absolute -top-2 -right-2 bg-slate-950 rounded-full w-7 h-7 items-center justify-center border border-white/10 shadow-lg"
+                                    className="absolute -top-2 -right-2 bg-secondary rounded-full w-8 h-8 items-center justify-center border-2 border-white shadow-xl"
                                 >
-                                    <X color="#EF4444" size={14} strokeWidth={3} />
+                                    <X color="white" size={16} strokeWidth={3} />
                                 </TouchableOpacity>
                             </View>
                         ))}
                     </ScrollView>
                 )}
                 
-                <View className="px-5 py-5 flex-row items-center">
+                <View className="px-5 py-6 flex-row items-center">
                     <TouchableOpacity
                         onPress={handleAttachPhoto}
-                        className="w-12 h-12 rounded-2xl bg-white/5 items-center justify-center border border-white/5 mr-3"
+                        className="w-14 h-14 rounded-2xl bg-bg-soft items-center justify-center border border-border-light mr-4 shadow-sm"
                     >
-                        <Paperclip size={20} color="#C8842A" strokeWidth={2.5} />
+                        <Paperclip size={24} color="#E67E22" strokeWidth={2.5} />
                     </TouchableOpacity>
 
-                    <View className="flex-1 bg-white/5 border border-white/5 rounded-[24px] px-5 py-1 min-h-[52px] justify-center">
+                    <View className="flex-1 bg-bg-soft border border-border-light rounded-[28px] px-6 py-2 min-h-[58px] justify-center shadow-inner">
                         <TextInput
-                            className="text-white text-[14px] font-medium py-2.5"
-                            placeholder="Message sécurisé..."
-                            placeholderTextColor="#334155"
+                            className="text-secondary text-[16px] font-bold py-3"
+                            placeholder="Transmission sécurisée..."
+                            placeholderTextColor="#A08060"
                             value={text}
-                            onChangeText={setText}
+                            onChangeText={handleTextChange}
                             multiline
-                            style={{ maxHeight: 100 }}
+                            style={{ maxHeight: 120 }}
                         />
                     </View>
 
                     <TouchableOpacity
                         onPress={sendMessage}
-                        disabled={sending || (!text.trim() && attachments.length === 0)}
-                        className={`w-12 h-12 rounded-2xl items-center justify-center ml-3 shadow-2xl ${(text.trim() || attachments.length > 0) ? 'bg-primary shadow-primary/30' : 'bg-white/5 border border-white/5'}`}
+                        disabled={sending || (!text.trim() && attachments.length === 0 && !linkedIncident)}
+                        className={`w-14 h-14 rounded-2xl items-center justify-center ml-4 shadow-2xl ${(text.trim() || attachments.length > 0 || linkedIncident) ? 'bg-primary shadow-primary/40' : 'bg-bg-soft border border-border-light'}`}
                     >
                         {sending ? (
-                            <ActivityIndicator size="small" color="#0F172A" />
+                            <ActivityIndicator size="small" color="white" />
                         ) : (
-                            <Send size={20} color={(text.trim() || attachments.length > 0) ? '#0F172A' : '#334155'} strokeWidth={2.5} />
+                            <Send size={24} color={(text.trim() || attachments.length > 0 || linkedIncident) ? 'white' : '#A08060'} strokeWidth={3} />
                         )}
                     </TouchableOpacity>
                 </View>

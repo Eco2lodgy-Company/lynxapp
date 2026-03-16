@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, RefreshControl, TouchableOpacity, ActivityIndicator, Alert, TextInput, Modal, StyleSheet, Platform } from 'react-native';
+import { View, Text, ScrollView, RefreshControl, TouchableOpacity, ActivityIndicator, Alert, TextInput, Modal, StyleSheet, Platform, Image, Dimensions } from 'react-native';
 import api from '../lib/api';
-import { AlertTriangle, MapPin, Search, ChevronDown, CheckCircle, Clock, ChevronLeft, Plus } from 'lucide-react-native';
+import { AlertTriangle, MapPin, Search, ChevronDown, CheckCircle, Clock, ChevronLeft, Plus, Image as ImageIcon, X, Trash2 } from 'lucide-react-native';
 import { useAuth } from '../context/AuthContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PremiumCard } from '../components/ui/PremiumCard';
-import Animated, { FadeInDown, FadeIn, SlideInUp } from 'react-native-reanimated';
+import Animated, { FadeInDown, FadeIn, SlideInUp, ZoomIn } from 'react-native-reanimated';
 import { BlurView } from 'expo-blur';
+import * as ImagePicker from 'expo-image-picker';
+
+const { width } = Dimensions.get('window');
 
 export default function IncidentsScreen() {
     const [refreshing, setRefreshing] = useState(false);
@@ -21,6 +24,8 @@ export default function IncidentsScreen() {
 
     const [modalVisible, setModalVisible] = useState(false);
     const [loadingSubmit, setLoadingSubmit] = useState(false);
+    const [selectedPhotos, setSelectedPhotos] = useState<any[]>([]);
+    const [selectedPhotoViewer, setSelectedPhotoViewer] = useState<string | null>(null);
 
     // Form states
     const [title, setTitle] = useState('');
@@ -59,6 +64,32 @@ export default function IncidentsScreen() {
         setRefreshing(false);
     }, []);
 
+    const pickImage = async () => {
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsMultipleSelection: true,
+            quality: 0.7,
+        });
+
+        if (!result.canceled) {
+            setSelectedPhotos([...selectedPhotos, ...result.assets]);
+        }
+    };
+
+    const takePhoto = async () => {
+        const result = await ImagePicker.launchCameraAsync({
+            quality: 0.7,
+        });
+
+        if (!result.canceled) {
+            setSelectedPhotos([...selectedPhotos, ...result.assets]);
+        }
+    };
+
+    const removeSelectedPhoto = (index: number) => {
+        setSelectedPhotos(prev => prev.filter((_, i) => i !== index));
+    };
+
     const handleSubmit = async () => {
         if (!selectedProject || !title.trim()) {
             Alert.alert("Erreur", "Le projet et le titre sont requis");
@@ -67,13 +98,32 @@ export default function IncidentsScreen() {
 
         setLoadingSubmit(true);
         try {
+            // 1. Upload photos first
+            const uploadedUrls = [];
+            for (const photo of selectedPhotos) {
+                const formData = new FormData();
+                formData.append('file', {
+                    uri: photo.uri,
+                    type: 'image/jpeg',
+                    name: `incident_${Date.now()}.jpg`
+                } as any);
+
+                const uploadRes = await api.post('/upload', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+                uploadedUrls.push(uploadRes.data.url);
+            }
+
+            // 2. Create incident
             await api.post('/incidents', {
                 projectId: selectedProject,
                 title: title.trim(),
                 description: description.trim(),
                 severity,
                 location: location.trim(),
+                photoUrls: uploadedUrls
             });
+
             Alert.alert("Succès", "Incident déclaré avec succès.");
             setModalVisible(false);
             // Reset form
@@ -81,6 +131,7 @@ export default function IncidentsScreen() {
             setDescription('');
             setSeverity('MOYENNE');
             setLocation('');
+            setSelectedPhotos([]);
             fetchData();
         } catch (error: any) {
             Alert.alert("Erreur", error.response?.data?.error || "Une erreur est survenue");
@@ -92,7 +143,7 @@ export default function IncidentsScreen() {
     const handleResolve = (incidentId: string) => {
         Alert.alert(
             "Marquer comme résolu",
-            "Voulez-vous vraiment marquer cet incident comme résolu ?",
+            "Voulez-vous vraiment clore cet incident ? Il sera définitivement archivé.",
             [
                 { text: "Annuler", style: "cancel" },
                 {
@@ -100,7 +151,7 @@ export default function IncidentsScreen() {
                     onPress: async () => {
                         try {
                             await api.put(`/incidents/${incidentId}`, {
-                                status: 'RESOLU'
+                                status: 'FERME'
                             });
                             fetchData();
                         } catch (error) {
@@ -159,6 +210,23 @@ export default function IncidentsScreen() {
                     </Text>
                 )}
 
+                {incident.photos && incident.photos.length > 0 && (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-6">
+                        {incident.photos.map((p: any) => (
+                            <TouchableOpacity 
+                                key={p.id} 
+                                className="mr-3 rounded-2xl overflow-hidden grayscale-[0.5]"
+                                onPress={() => setSelectedPhotoViewer(p.url)}
+                            >
+                                <Image 
+                                    source={{ uri: `${process.env.EXPO_PUBLIC_API_URL}${p.url}` }}
+                                    style={{ width: 100, height: 100 }}
+                                />
+                            </TouchableOpacity>
+                        ))}
+                    </ScrollView>
+                )}
+
                 <View className="flex-row items-center justify-between border-t border-white/5 pt-4 mt-1">
                     <View className="flex-row items-center bg-slate-950/30 px-3 py-1.5 rounded-xl border border-white/5">
                         {getStatusIcon(incident.status)}
@@ -171,7 +239,7 @@ export default function IncidentsScreen() {
                         </Text>
                     </View>
                     
-                    {!isResolved && (
+                    {!isResolved && (user?.role === 'CONDUCTEUR' || user?.role === 'ADMIN') && (
                         <TouchableOpacity 
                             onPress={() => handleResolve(incident.id)} 
                             className="bg-primary/10 border border-primary/30 px-4 py-2 rounded-xl flex-row items-center"
@@ -191,6 +259,29 @@ export default function IncidentsScreen() {
             </PremiumCard>
         );
     };
+
+    const PhotoViewer = () => (
+        <Modal visible={!!selectedPhotoViewer} transparent animationType="fade">
+            <BlurView intensity={100} tint="dark" style={StyleSheet.absoluteFill}>
+                <TouchableOpacity 
+                    className="flex-1 justify-center items-center"
+                    onPress={() => setSelectedPhotoViewer(null)}
+                >
+                    <Image 
+                        source={{ uri: `${process.env.EXPO_PUBLIC_API_URL}${selectedPhotoViewer}` }}
+                        style={{ width: width, height: width }}
+                        resizeMode="contain"
+                    />
+                    <TouchableOpacity 
+                        onPress={() => setSelectedPhotoViewer(null)}
+                        className="absolute top-16 right-6 w-12 h-12 bg-white/10 rounded-full items-center justify-center border border-white/20"
+                    >
+                        <X color="white" size={24} />
+                    </TouchableOpacity>
+                </TouchableOpacity>
+            </BlurView>
+        </Modal>
+    );
 
     return (
         <View className="flex-1 bg-slate-950">
@@ -252,7 +343,6 @@ export default function IncidentsScreen() {
                 </ScrollView>
             )}
 
-            {/* Modal de création d'incident */}
             <Modal
                 animationType="slide"
                 transparent={true}
@@ -328,6 +418,35 @@ export default function IncidentsScreen() {
                                         onChangeText={setLocation}
                                     />
 
+                                    <View className="mb-8">
+                                        <Text className="text-slate-500 text-[10px] font-black uppercase tracking-[2px] mb-3 ml-1">Photos à l'appui</Text>
+                                        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row mb-4">
+                                            <TouchableOpacity 
+                                                onPress={takePhoto}
+                                                className="w-24 h-24 bg-slate-800 rounded-3xl items-center justify-center border-2 border-dashed border-white/10 mr-3"
+                                            >
+                                                <ImageIcon size={24} color="#64748b" />
+                                            </TouchableOpacity>
+                                            <TouchableOpacity 
+                                                onPress={pickImage}
+                                                className="w-24 h-24 bg-slate-800 rounded-3xl items-center justify-center border-2 border-dashed border-white/10 mr-3"
+                                            >
+                                                <Plus size={24} color="#64748b" />
+                                            </TouchableOpacity>
+                                            {selectedPhotos.map((photo, idx) => (
+                                                <View key={idx} className="relative mr-3">
+                                                    <Image source={{ uri: photo.uri }} className="w-24 h-24 rounded-3xl" />
+                                                    <TouchableOpacity 
+                                                        onPress={() => removeSelectedPhoto(idx)}
+                                                        className="absolute -top-2 -right-2 w-7 h-7 bg-red-600 rounded-full items-center justify-center border-2 border-slate-900"
+                                                    >
+                                                        <Trash2 size={12} color="white" />
+                                                    </TouchableOpacity>
+                                                </View>
+                                            ))}
+                                        </ScrollView>
+                                    </View>
+
                                     <View className="mb-10">
                                         <Text className="text-slate-500 text-[10px] font-black uppercase tracking-[2px] mb-3 ml-1">Observations</Text>
                                         <TextInput
@@ -348,13 +467,14 @@ export default function IncidentsScreen() {
                                     className="w-full h-20 rounded-[28px]"
                                     disabled={loadingSubmit || !title.trim()}
                                 >
-                                    Transmettre le Rapport
+                                    {loadingSubmit ? <ActivityIndicator color="white" /> : "Transmettre le Rapport"}
                                 </Button>
                             </ScrollView>
                         </Animated.View>
                     </View>
                 </BlurView>
             </Modal>
+            <PhotoViewer />
         </View>
     );
 }
