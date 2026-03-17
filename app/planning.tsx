@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, ScrollView, RefreshControl, TouchableOpacity, ActivityIndicator, StyleSheet, FlatList } from 'react-native';
 import api from '../lib/api';
 import { 
@@ -28,6 +28,19 @@ export default function PlanningScreen() {
     const [planning, setPlanning] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState<'ALL' | 'TASK' | 'DELIVERY' | 'VISIT'>('ALL');
+    const [selectedDate, setSelectedDate] = useState<string | null>(null);
+
+    // Generate 7 days starting from today
+    const weekDays = useMemo(() => {
+        const days = [];
+        const today = new Date();
+        for (let i = 0; i < 7; i++) {
+            const d = new Date(today);
+            d.setDate(today.getDate() + i);
+            days.push(d);
+        }
+        return days;
+    }, []);
 
     const fetchPlanning = async () => {
         try {
@@ -50,7 +63,12 @@ export default function PlanningScreen() {
         setRefreshing(false);
     }, []);
 
-    const filteredData = planning.filter(item => filter === 'ALL' || item.type === filter);
+    const filteredData = planning
+        .filter(item => filter === 'ALL' || item.type === filter)
+        .filter(item => {
+            if (!selectedDate) return true;
+            return new Date(item.date).toDateString() === selectedDate;
+        });
 
     const getIcon = (type: string) => {
         switch (type) {
@@ -172,6 +190,41 @@ export default function PlanningScreen() {
                             </Text>
                         </TouchableOpacity>
                     ))}
+                </ScrollView>
+            </View>
+
+            {/* Calendar Date Strip */}
+            <View className="px-4 mb-6">
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
+                    <TouchableOpacity
+                        onPress={() => setSelectedDate(null)}
+                        className={`px-4 py-3 rounded-2xl mr-2 border-2 items-center ${!selectedDate ? 'bg-primary border-primary' : 'bg-white/5 border-white/5'}`}
+                    >
+                        <Text className={`text-[10px] font-black uppercase tracking-widest ${!selectedDate ? 'text-white' : 'text-slate-400'}`}>Tout</Text>
+                    </TouchableOpacity>
+                    {weekDays.map((day, idx) => {
+                        const dateStr = day.toDateString();
+                        const isSelected = selectedDate === dateStr;
+                        const isToday = new Date().toDateString() === dateStr;
+                        const count = planning.filter(p => new Date(p.date).toDateString() === dateStr).length;
+                        return (
+                            <TouchableOpacity
+                                key={idx}
+                                onPress={() => setSelectedDate(isSelected ? null : dateStr)}
+                                className={`w-16 py-3 rounded-2xl mr-2 items-center border-2 ${isSelected ? 'bg-primary border-primary' : isToday ? 'bg-white/10 border-primary/30' : 'bg-white/5 border-white/5'}`}
+                            >
+                                <Text className={`text-[9px] font-black uppercase tracking-widest mb-1 ${isSelected ? 'text-white' : 'text-slate-500'}`}>
+                                    {day.toLocaleDateString('fr-FR', { weekday: 'short' })}
+                                </Text>
+                                <Text className={`text-xl font-black ${isSelected ? 'text-white' : isToday ? 'text-primary' : 'text-white'}`}>
+                                    {day.getDate()}
+                                </Text>
+                                {count > 0 && (
+                                    <View className={`w-1.5 h-1.5 rounded-full mt-1 ${isSelected ? 'bg-white' : 'bg-primary'}`} />
+                                )}
+                            </TouchableOpacity>
+                        );
+                    })}
                 </ScrollView>
             </View>
 

@@ -95,14 +95,28 @@ export default function ConversationScreen() {
         setSending(true);
         const messageText = text.trim();
         const currentIncident = linkedIncident;
+        const currentAttachments = [...attachments];
         setText('');
         setLinkedIncident(null);
+        setAttachments([]);
+
+        // Optimistic update — show the message instantly
+        const optimisticMsg = {
+            id: `temp-${Date.now()}`,
+            authorId: user?.id,
+            author: { firstName: user?.name?.split(' ')[0] || '', lastName: '' },
+            content: messageText,
+            attachments: [],
+            createdAt: new Date().toISOString(),
+            _optimistic: true,
+        };
+        setMessages(prev => [...prev, optimisticMsg]);
 
         try {
             let uploadedUrls: any[] = [];
             
             // Handle media attachments
-            for (const att of attachments) {
+            for (const att of currentAttachments) {
                 const formData = new FormData();
                 formData.append('file', {
                     uri: att.uri,
@@ -136,9 +150,12 @@ export default function ConversationScreen() {
             setAttachments([]);
             fetchMessages();
         } catch (err: any) {
-            Alert.alert('Erreur', err.response?.data?.error || 'Impossible d\'envoyer le message');
+            Alert.alert('Erreur', err.response?.data?.error || "Impossible d'envoyer le message");
             setText(messageText);
             setLinkedIncident(currentIncident);
+            setAttachments(currentAttachments);
+            // Remove optimistic message
+            setMessages(prev => prev.filter(m => !(m as any)._optimistic));
         } finally {
             setSending(false);
         }
@@ -159,12 +176,12 @@ export default function ConversationScreen() {
                 ? await ImagePicker.launchCameraAsync({
                     mediaTypes: ImagePicker.MediaTypeOptions.All,
                     allowsEditing: true,
-                    quality: 0.8,
+                    quality: 0.5,
                   })
                 : await ImagePicker.launchImageLibraryAsync({
                     mediaTypes: ImagePicker.MediaTypeOptions.All,
                     allowsEditing: true,
-                    quality: 0.8,
+                    quality: 0.5,
                   });
 
             if (!result.canceled && result.assets[0]) {

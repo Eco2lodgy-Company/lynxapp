@@ -6,11 +6,11 @@
     "sdkVersion": "51.0.0",
     "orientation": "portrait",
     "icon": "./assets/logo-lynx.png",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "light",
     "splash": {
       "image": "./assets/logo-lynx.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0F172A"
+      "backgroundColor": "#FFFFFF"
     },
     "android": {
       "package": "com.nawarazak.lynx",

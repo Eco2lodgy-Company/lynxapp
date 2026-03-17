@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, RefreshControl, TouchableOpacity, ActivityIndicator, Image, StyleSheet, Platform } from 'react-native';
+import { View, Text, ScrollView, RefreshControl, TouchableOpacity, ActivityIndicator, Image, StyleSheet, Platform, Modal, Alert } from 'react-native';
 import api from '../../lib/api';
-import { MessageSquare, ChevronRight, User, Search, Plus } from 'lucide-react-native';
+import { MessageSquare, ChevronRight, User, Search, Plus, X } from 'lucide-react-native';
 import { useAuth } from '../../context/AuthContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -9,6 +9,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { PremiumCard } from '../../components/ui/PremiumCard';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { BlurView } from 'expo-blur';
+import { Input } from '../../components/ui/Input';
 
 export default function MessagesScreen() {
     const [refreshing, setRefreshing] = useState(false);
@@ -17,6 +18,11 @@ export default function MessagesScreen() {
     const { user } = useAuth();
     const insets = useSafeAreaInsets();
     const router = useRouter();
+    const [showNewChannel, setShowNewChannel] = useState(false);
+    const [projects, setProjects] = useState<any[]>([]);
+    const [selectedProject, setSelectedProject] = useState<string | null>(null);
+    const [channelName, setChannelName] = useState('');
+    const [creating, setCreating] = useState(false);
 
     const fetchConversations = async () => {
         try {
@@ -39,6 +45,40 @@ export default function MessagesScreen() {
         setRefreshing(false);
     }, []);
 
+    const openNewChannel = async () => {
+        setShowNewChannel(true);
+        try {
+            const res = await api.get('/projects');
+            setProjects(res.data);
+        } catch (e) {
+            console.error('Error loading projects:', e);
+        }
+    };
+
+    const handleCreateChannel = async () => {
+        if (!selectedProject) {
+            Alert.alert('Projet requis', 'Sélectionnez un projet pour créer le canal.');
+            return;
+        }
+        setCreating(true);
+        try {
+            const res = await api.post('/conversations', {
+                name: channelName || undefined,
+                projectId: selectedProject,
+                participantIds: [],
+            });
+            setShowNewChannel(false);
+            setChannelName('');
+            setSelectedProject(null);
+            await fetchConversations();
+            router.push(`/conversation/${res.data.id}`);
+        } catch (err: any) {
+            Alert.alert('Erreur', err.response?.data?.error || 'Impossible de créer le canal');
+        } finally {
+            setCreating(false);
+        }
+    };
+
     const ConversationCard = ({ conversation, index }: { conversation: any, index: number }) => {
         const lastMessage = conversation.messages?.[0];
         const otherMembers = conversation.members.filter((m: any) => m.userId !== user?.id);
@@ -55,7 +95,6 @@ export default function MessagesScreen() {
                         <View className="w-16 h-16 rounded-[24px] bg-bg-soft items-center justify-center mr-5 border border-border-light overflow-hidden">
                             <User size={30} color="#4A3520" strokeWidth={2} />
                         </View>
-                        <View className="absolute bottom-1 right-5 w-4.5 h-4.5 rounded-full bg-emerald-500 border-2 border-white shadow-sm" />
                     </View>
                     
                     <View className="flex-1">
@@ -71,8 +110,9 @@ export default function MessagesScreen() {
                         </View>
                         
                         <Text className="text-secondary/50 text-[14px] font-bold leading-5" numberOfLines={1}>
-                            <Text className="text-primary/80">{lastMessage?.author.firstName}: </Text>
-                            {lastMessage ? lastMessage.content : "Début de la transmission..."}
+                            {lastMessage ? (
+                                <><Text className="text-primary/80">{lastMessage.author.firstName}: </Text>{lastMessage.content || '📎 Pièce jointe'}</>
+                            ) : "Début de la transmission..."}
                         </Text>
                         
                         {conversation.project && (
@@ -110,7 +150,10 @@ export default function MessagesScreen() {
                         <Text className="text-secondary/40 text-sm font-black uppercase tracking-[5px] mb-2">Canaux Sécurisés</Text>
                         <Text className="text-secondary text-4xl font-black tracking-tighter">Messages</Text>
                     </View>
-                    <TouchableOpacity className="w-14 h-14 bg-primary rounded-2xl items-center justify-center shadow-xl shadow-primary/40">
+                    <TouchableOpacity 
+                        onPress={openNewChannel}
+                        className="w-14 h-14 bg-primary rounded-2xl items-center justify-center shadow-xl shadow-primary/40"
+                    >
                         <Plus size={28} color="white" strokeWidth={3} />
                     </TouchableOpacity>
                 </Animated.View>
@@ -143,6 +186,53 @@ export default function MessagesScreen() {
                     </ScrollView>
                 )}
             </View>
+
+            {/* New Channel Modal */}
+            <Modal visible={showNewChannel} transparent animationType="fade" onRequestClose={() => setShowNewChannel(false)}>
+                <View className="flex-1 bg-black/60 justify-center items-center px-6">
+                    <Animated.View entering={FadeInUp} className="bg-white rounded-[36px] w-full p-8 shadow-2xl">
+                        <View className="flex-row justify-between items-center mb-8">
+                            <View>
+                                <Text className="text-secondary text-2xl font-black tracking-tight">Nouveau Canal</Text>
+                                <Text className="text-secondary/40 text-[10px] font-black uppercase tracking-widest mt-1">Sélectionnez un projet</Text>
+                            </View>
+                            <TouchableOpacity onPress={() => setShowNewChannel(false)} className="w-12 h-12 bg-bg-soft rounded-full items-center justify-center">
+                                <X size={20} color="#4A3520" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <Input
+                            label="Nom du canal (optionnel)"
+                            placeholder="Ex: Discussion Équipe..."
+                            value={channelName}
+                            onChangeText={setChannelName}
+                        />
+
+                        <Text className="text-[10px] font-black text-secondary mb-3 ml-1 uppercase tracking-[3px] mt-4">Projet</Text>
+                        <ScrollView style={{ maxHeight: 200 }} className="mb-6">
+                            {projects.map(p => (
+                                <TouchableOpacity
+                                    key={p.id}
+                                    onPress={() => setSelectedProject(p.id)}
+                                    className={`p-4 mb-2 rounded-2xl border-2 ${selectedProject === p.id ? 'border-primary bg-primary/5' : 'border-border-light bg-bg-soft'}`}
+                                >
+                                    <Text className={`font-black ${selectedProject === p.id ? 'text-primary' : 'text-secondary'}`}>{p.name}</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+
+                        <TouchableOpacity
+                            onPress={handleCreateChannel}
+                            disabled={creating}
+                            className="bg-secondary h-16 rounded-2xl items-center justify-center shadow-lg"
+                        >
+                            {creating ? <ActivityIndicator color="white" /> : (
+                                <Text className="text-white font-black uppercase tracking-widest">Créer le Canal</Text>
+                            )}
+                        </TouchableOpacity>
+                    </Animated.View>
+                </View>
+            </Modal>
         </View>
     );
 }

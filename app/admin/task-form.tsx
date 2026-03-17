@@ -138,7 +138,7 @@ export default function TaskFormScreen() {
 
                     <View className="flex-row space-x-4">
                         <View className="flex-1">
-                            <Input label="Date d'échéance" value={form.dueDate} onChangeText={(t) => setForm(f => ({ ...f, dueDate: t }))} placeholder="YYYY-MM-DD" icon={<Calendar size={18} color="#A08060" />} />
+                            <Input label="Date d'échéance" value={form.dueDate} onChangeText={(t) => setForm(f => ({ ...f, dueDate: t }))} placeholder="AAAA-MM-JJ" icon={<Calendar size={18} color="#A08060" />} />
                         </View>
                     </View>
 

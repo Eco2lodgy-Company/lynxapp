@@ -40,11 +40,11 @@ export default function LoginScreen() {
     return (
         <KeyboardAvoidingView
             behavior={Platform.OS === "ios" ? "padding" : "height"}
-            className="flex-1 bg-slate-950"
+            className="flex-1 bg-white"
         >
-            <StatusBar style="light" />
+            <StatusBar style="dark" />
             <LinearGradient
-                colors={['#020617', '#0F172A', '#020617']}
+                colors={['#FFFFFF', '#FDFCFB', '#F5F0EB']}
                 style={StyleSheet.absoluteFill}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
@@ -63,23 +63,21 @@ export default function LoginScreen() {
                 {/* Branding Section */}
                 <Animated.View entering={FadeInDown.duration(1000).springify()} className="items-center mb-16">
                     <View className="relative">
-                        <View className="w-32 h-32 bg-black/40 rounded-[35px] border-2 border-white/5 items-center justify-center shadow-2xl overflow-hidden">
+                        <View className="w-32 h-32 bg-white rounded-[35px] border-2 border-secondary/10 items-center justify-center shadow-2xl shadow-secondary/10 overflow-hidden">
                             <Image 
                                 source={require("../assets/logo-lynx.png")}
                                 className="w-24 h-24"
                                 resizeMode="contain"
                             />
                         </View>
-                        <View className="absolute -top-1 -left-1 w-6 h-6 rounded-full border-2 border-[#020617] bg-primary items-center justify-center">
-                            <View className="w-1.5 h-1.5 bg-white rounded-full opacity-0" />
-                            <View className="w-3 h-3 bg-primary/40 rounded-full animate-pulse blur-md" />
+                        <View className="absolute -top-1 -left-1 w-6 h-6 rounded-full border-2 border-white bg-primary items-center justify-center">
                             <View className="absolute w-2 h-2 bg-primary rounded-full shadow-lg shadow-primary" />
                         </View>
                     </View>
                     
                     <Animated.View entering={FadeIn.delay(600)} className="mt-8 items-center">
-                        <Text className="text-white/40 text-[10px] font-black uppercase tracking-[6px] mb-2">LYNX MANAGEMENT</Text>
-                        <Text className="text-white text-2xl font-black tracking-tight">Système de Pilotage Elite</Text>
+                        <Text className="text-secondary/40 text-[10px] font-black uppercase tracking-[6px] mb-2">LYNX MANAGEMENT</Text>
+                        <Text className="text-secondary text-2xl font-black tracking-tight">Système de Pilotage Elite</Text>
                     </Animated.View>
                 </Animated.View> 
 
@@ -90,37 +88,32 @@ export default function LoginScreen() {
                     style={{ 
                         padding: 28, 
                         borderRadius: 36, 
-                        backgroundColor: 'rgba(15, 23, 42, 0.7)',
-                        borderColor: 'rgba(255, 255, 255, 0.05)',
+                        backgroundColor: '#FFFFFF',
+                        borderColor: 'rgba(74, 53, 32, 0.08)',
                         borderWidth: 1.5
                     }} 
                     glass={true}
                 >
                     <View className="mb-10">
-                        <Text className="text-white text-3xl font-black tracking-tight mb-2">Connexion</Text>
-                        <Text className="text-white/40 text-[13px] font-medium leading-5">Accédez à votre espace sécurisé pour piloter vos opérations.</Text>
+                        <Text className="text-secondary text-3xl font-black tracking-tight mb-2">Connexion</Text>
+                        <Text className="text-secondary/50 text-[13px] font-medium leading-5">Accédez à votre espace sécurisé pour piloter vos opérations.</Text>
                     </View>
 
                     {error && (
-                        <Animated.View entering={FadeIn} className="mb-8 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl">
-                            <Text className="text-red-400 text-[10px] font-black uppercase tracking-wider text-center">{error}</Text>
+                        <Animated.View entering={FadeIn} className="mb-8 p-4 bg-red-50 border border-red-200 rounded-2xl">
+                            <Text className="text-red-600 text-[10px] font-black uppercase tracking-wider text-center">{error}</Text>
                         </Animated.View>
                     )}
 
                     <View>
                         <Input
                             label="ADRESSE EMAIL PROFESSIONNELLE"
-                            placeholder="ouvrier3@lynx.ngs"
+                            placeholder="utilisateur@lynx.pro"
                             value={email}
                             onChangeText={setEmail}
                             keyboardType="email-address"
                             autoCapitalize="none"
                             autoCorrect={false}
-                            className="bg-[#2d2d14]/40 h-16 rounded-2xl border-transparent"
-                            inputClassName="text-[#8B7D5B] font-bold"
-                            labelClassName="text-[#8B7D5B]/70"
-                            //@ts-ignore
-                            placeholderTextColor="rgba(139, 125, 91, 0.3)"
                         />
 
                         <View className="mt-2">
@@ -130,11 +123,6 @@ export default function LoginScreen() {
                                 value={password}
                                 onChangeText={setPassword}
                                 secureTextEntry
-                                className="bg-[#2d2d14]/40 h-16 rounded-2xl border-transparent"
-                                inputClassName="text-[#8B7D5B]"
-                                labelClassName="text-[#8B7D5B]/70"
-                                //@ts-ignore
-                                placeholderTextColor="rgba(139, 125, 91, 0.3)"
                             />
                         </View>
                     </View>
@@ -146,7 +134,7 @@ export default function LoginScreen() {
                         className="mt-8 overflow-hidden rounded-3xl"
                     >
                         <LinearGradient
-                            colors={['#C18429', '#8C5E1B']}
+                            colors={['#4A3520', '#2A1F14']}
                             start={{ x: 0, y: 0 }}
                             end={{ x: 1, y: 1 }}
                             style={{ height: 72, alignItems: 'center', justifyContent: 'center' }}
@@ -162,13 +150,13 @@ export default function LoginScreen() {
 
                 {/* Footer */}
                 <Animated.View entering={FadeIn.delay(1200)} className="items-center mt-12 pb-8">
-                    <Text className="text-white/20 text-[9px] font-black tracking-[4px] uppercase mb-1">
+                    <Text className="text-secondary/30 text-[9px] font-black tracking-[4px] uppercase mb-1">
                         PART OF ECOTECH ECOSYSTEM
                     </Text>
                     <Text className="text-primary/60 text-[10px] font-black tracking-[2px] uppercase mb-4">
                         POWERED BY NGS
                     </Text>
-                    <Text className="text-white/10 text-[8px] font-bold">
+                    <Text className="text-secondary/20 text-[8px] font-bold">
                         © {new Date().getFullYear()} LYNX Corp. All rights reserved.
                     </Text>
                 </Animated.View>

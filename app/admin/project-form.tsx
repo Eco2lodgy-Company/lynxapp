@@ -3,7 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Sty
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ChevronLeft, Check, Briefcase, MapPin, Calendar, DollarSign, User } from 'lucide-react-native';
+import { ChevronLeft, Check, Briefcase, MapPin, Calendar, Euro, User } from 'lucide-react-native';
 import api from '../../lib/api';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
@@ -125,14 +125,14 @@ export default function ProjectFormScreen() {
                     
                     <View className="flex-row space-x-4">
                         <View className="flex-1">
-                            <Input label="Date Début" value={form.startDate} onChangeText={(t) => setForm(f => ({ ...f, startDate: t }))} placeholder="YYYY-MM-DD" icon={<Calendar size={18} color="#A08060" />} />
+                            <Input label="Date Début" value={form.startDate} onChangeText={(t) => setForm(f => ({ ...f, startDate: t }))} placeholder="AAAA-MM-JJ" icon={<Calendar size={18} color="#A08060" />} />
                         </View>
                         <View className="flex-1">
-                            <Input label="Fin Estimée" value={form.estimatedEndDate} onChangeText={(t) => setForm(f => ({ ...f, estimatedEndDate: t }))} placeholder="YYYY-MM-DD" icon={<Calendar size={18} color="#A08060" />} />
+                            <Input label="Fin Estimée" value={form.estimatedEndDate} onChangeText={(t) => setForm(f => ({ ...f, estimatedEndDate: t }))} placeholder="AAAA-MM-JJ" icon={<Calendar size={18} color="#A08060" />} />
                         </View>
                     </View>
 
-                    <Input label="Budget (EUR)" value={form.budget} onChangeText={(t) => setForm(f => ({ ...f, budget: t }))} placeholder="50000" keyboardType="numeric" icon={<DollarSign size={18} color="#A08060" />} />
+                    <Input label="Budget (€)" value={form.budget} onChangeText={(t) => setForm(f => ({ ...f, budget: t }))} placeholder="500 000 €" keyboardType="numeric" icon={<Euro size={18} color="#A08060" />} />
 
                     <Text className="text-[10px] font-black text-secondary mb-3 ml-1 uppercase tracking-[3px]">Superviseur</Text>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-6">

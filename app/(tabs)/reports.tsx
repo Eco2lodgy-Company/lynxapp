@@ -76,7 +76,7 @@ export default function ReportsScreen() {
     const handleValidate = async (logId: string) => {
         setActionLoading(true);
         try {
-            await api.patch(`/daily-logs/${logId}`, { status: 'VALIDE' });
+            await api.put(`/daily-logs/${logId}`, { status: 'VALIDE' });
             Alert.alert('✅ Validé', 'Le journal a été validé avec succès.');
             setSelectedLog(null);
             fetchLogs();
@@ -95,7 +95,7 @@ export default function ReportsScreen() {
         }
         setActionLoading(true);
         try {
-            await api.patch(`/daily-logs/${rejectModal.logId}`, { 
+            await api.put(`/daily-logs/${rejectModal.logId}`, { 
                 status: 'REJETE', 
                 correctionNotes: counterNotes.trim() 
             });

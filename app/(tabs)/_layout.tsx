@@ -80,8 +80,7 @@ export default function TabLayout() {
         }}
       />
       
-      {user?.role !== 'OUVRIER' && (
-        <Tabs.Screen
+      <Tabs.Screen
           name="messages"
           options={{
             title: 'Messages',
@@ -92,7 +91,6 @@ export default function TabLayout() {
             ),
           }}
         />
-      )}
 
       <Tabs.Screen
         name="profile"

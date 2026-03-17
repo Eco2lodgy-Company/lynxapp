@@ -18,7 +18,8 @@ import {
     Image as ImageIcon,
     Calendar,
     LogIn,
-    LogOut
+    LogOut,
+    Users
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -134,6 +135,14 @@ export default function DashboardScreen() {
             color: '#D946EF',
             roles: ['CLIENT', 'ADMIN', 'CONDUCTEUR', 'CHEF_EQUIPE'],
             onPress: () => router.push('/photos'),
+        },
+        {
+            label: 'Utilisateurs',
+            sub: 'Gestion des membres',
+            icon: Users,
+            color: '#6366F1',
+            roles: ['ADMIN', 'CONDUCTEUR'],
+            onPress: () => router.push('/admin/users'),
         },
     ];
 
@@ -251,7 +260,7 @@ export default function DashboardScreen() {
                 )}
 
                 <View className="mt-8 mb-8">
-                    <Text className="text-secondary text-xl font-black mb-8 tracking-tight">Espace de Travail</Text>
+                    <Text className="text-secondary text-xl font-black mb-8 tracking-tight text-center">Espace de Travail</Text>
                     
                     <View className="flex-row flex-wrap justify-between">
                         {visibleActions.map((action, index) => (

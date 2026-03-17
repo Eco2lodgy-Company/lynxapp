@@ -388,7 +388,7 @@ export default function DeliveriesScreen() {
 
                                     <Input 
                                         label="Date prévue (AAAA-MM-JJ)"
-                                        placeholder="2026-03-20"
+                                        placeholder="AAAA-MM-JJ"
                                         value={plannedDate}
                                         onChangeText={setPlannedDate}
                                     />
