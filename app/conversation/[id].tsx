@@ -4,15 +4,17 @@ import {
     KeyboardAvoidingView, Platform, ActivityIndicator, Alert, Image, StyleSheet, Dimensions
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import api from '../../lib/api';
-import { useAuth } from '../../context/AuthContext';
+import { Ionicons } from '@expo/vector-icons';
+import api, { ASSET_BASE_URL } from '../../lib/api';
+import { Input } from '../../components/ui/Input';
 import { ChevronLeft, Send, Paperclip, Camera, MapPin, Clock, MoreVertical, X, AlertTriangle, ChevronRight } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Video, ResizeMode } from 'expo-av';
 import Animated, { FadeIn, FadeInDown, SlideInRight, Layout, SlideInUp, FadeOut } from 'react-native-reanimated';
+import { useAuth } from '../../context/AuthContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
 
@@ -187,8 +189,12 @@ export default function ConversationScreen() {
             if (!result.canceled && result.assets[0]) {
                 const asset = result.assets[0];
                 const uri = asset.uri;
-                const type = asset.type === 'video' ? 'video/mp4' : 'image/jpeg';
-                const name = uri.split('/').pop() || `media-${Date.now()}`;
+                const isVideo = asset.type === 'video';
+                const type = isVideo ? 'video/mp4' : 'image/jpeg';
+                // Always append extension to avoid React Native missing filename matching in FormData boundary parser
+                const ext = isVideo ? '.mp4' : '.jpg';
+                const baseName = uri.split('/').pop() || `media-${Date.now()}`;
+                const name = baseName.includes('.') ? baseName : `${baseName}${ext}`;
                 setAttachments(prev => [...prev, { uri, type, name }]);
             }
         } catch (error) {
@@ -347,14 +353,14 @@ export default function ConversationScreen() {
                                                                 <View key={i} className="w-72 h-72 rounded-[25px] overflow-hidden bg-black/5 items-center justify-center">
                                                                     {isVideo ? (
                                                                         <Video
-                                                                            source={{ uri: `${process.env.EXPO_PUBLIC_API_URL}${url}` }}
+                                                                            source={{ uri: `${ASSET_BASE_URL}${url}` }}
                                                                             useNativeControls
                                                                             resizeMode={ResizeMode.COVER}
                                                                             style={{ width: '100%', height: '100%' }}
                                                                         />
                                                                     ) : (
                                                                         <Image
-                                                                            source={{ uri: `${process.env.EXPO_PUBLIC_API_URL}${url}` }}
+                                                                            source={{ uri: `${ASSET_BASE_URL}${url}` }}
                                                                             className="w-full h-full"
                                                                             resizeMode="cover"
                                                                         />

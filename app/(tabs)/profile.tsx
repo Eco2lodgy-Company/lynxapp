@@ -51,14 +51,12 @@ export default function ProfileScreen() {
         setUploading(true);
         try {
             const formData = new FormData();
-            const fileName = uri.split('/').pop() || 'avatar.jpg';
-            const fileType = fileName.split('.').pop() === 'png' ? 'image/png' : 'image/jpeg';
-
+            
             // @ts-ignore
             formData.append('file', {
                 uri,
-                name: fileName,
-                type: fileType,
+                type: 'image/jpeg',
+                name: `avatar_${Date.now()}.jpg`
             });
 
             const uploadRes = await api.post('/upload', formData, {
@@ -274,15 +272,15 @@ export default function ProfileScreen() {
 
             {/* Password Change Modal */}
             {passwordModalVisible && (
-                <Animated.View entering={FadeIn} className="absolute inset-0 bg-black/60 justify-center items-center z-50 px-6">
+                <Animated.View entering={FadeIn} className="absolute inset-0 bg-black/60 justify-center items-center z-50 px-5">
                     <Animated.View 
                         entering={FadeInUp} 
-                        className="bg-slate-900 rounded-[40px] p-8 border border-white/10 w-full shadow-2xl"
+                        className="bg-white rounded-[40px] p-8 w-full shadow-2xl"
                     >
-                        <View className="flex-row justify-between items-center mb-8">
+                        <View className="flex-row items-center justify-between mb-8">
                             <View>
-                                <Text className="text-white text-3xl font-black tracking-tight">Sécurité</Text>
-                                <Text className="text-slate-400 text-xs font-bold uppercase tracking-[2px] mt-1">Changer le mot de passe</Text>
+                                <Text className="text-secondary text-2xl font-black mb-1">Sécurité</Text>
+                                <Text className="text-secondary/50 text-[10px] font-bold uppercase tracking-widest">CHANGER LE MOT DE PASSE</Text>
                             </View>
                             <TouchableOpacity 
                                 onPress={() => setPasswordModalVisible(false)} 
@@ -292,39 +290,36 @@ export default function ProfileScreen() {
                             </TouchableOpacity>
                         </View>
                         
-                        <View className="mb-6">
-                            <Text className="text-slate-500 text-[9px] font-black uppercase tracking-[2px] mb-3 ml-2">Mot de passe actuel</Text>
+                        <View className="bg-bg-soft border border-border-light rounded-2xl mb-6 overflow-hidden h-14">
                             <Input
+                                placeholder="Mot de passe actuel"
                                 value={currentPassword}
                                 onChangeText={setCurrentPassword}
                                 secureTextEntry
-                                placeholder="••••••••"
-                                placeholderTextColor="#475569"
-                                className="bg-slate-800 h-16 text-white font-bold rounded-2xl border border-white/5"
+                                inputClassName="bg-transparent border-0"
+                                placeholderTextColor="#A08060"
                             />
                         </View>
 
-                        <View className="mb-6">
-                            <Text className="text-slate-500 text-[9px] font-black uppercase tracking-[2px] mb-3 ml-2">Nouveau mot de passe</Text>
+                        <View className="bg-bg-soft border border-border-light rounded-2xl mb-6 overflow-hidden h-14">
                             <Input
+                                placeholder="Nouveau mot de passe"
                                 value={newPassword}
                                 onChangeText={setNewPassword}
                                 secureTextEntry
-                                placeholder="••••••••"
-                                placeholderTextColor="#475569"
-                                className="bg-slate-800 h-16 text-white font-bold rounded-2xl border border-white/5"
+                                inputClassName="bg-transparent border-0"
+                                placeholderTextColor="#A08060"
                             />
                         </View>
 
-                        <View className="mb-10">
-                            <Text className="text-slate-500 text-[9px] font-black uppercase tracking-[2px] mb-3 ml-2">Confirmation</Text>
+                        <View className="bg-bg-soft border border-border-light rounded-2xl mb-8 overflow-hidden h-14">
                             <Input
+                                placeholder="Confirmer le nouveau mot de passe"
                                 value={confirmPassword}
                                 onChangeText={setConfirmPassword}
                                 secureTextEntry
-                                placeholder="••••••••"
-                                placeholderTextColor="#475569"
-                                className="bg-slate-800 h-16 text-white font-bold rounded-2xl border border-white/5"
+                                inputClassName="bg-transparent border-0"
+                                placeholderTextColor="#A08060"
                             />
                         </View>
 

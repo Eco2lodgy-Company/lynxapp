@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ChevronLeft, Camera, X, Check, CloudRain, Sun, Cloud, Thermometer } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
-import api from '../../../lib/api';
+import api, { ASSET_BASE_URL } from '../../../lib/api';
 import { Input } from '../../../components/ui/Input';
 import { Button } from '../../../components/ui/Button';
 import Animated, { FadeInUp } from 'react-native-reanimated';
@@ -37,8 +37,8 @@ export default function DailyLogFormScreen() {
         const fetchData = async () => {
             try {
                 const [projRes, logRes] = await Promise.all([
-                    api.get('/projects'),
-                    isEdit ? api.get(`/daily-logs/${id}`) : Promise.resolve({ data: null })
+                    api.get('/projects').catch(() => ({ data: [] })),
+                    isEdit ? api.get(`/daily-logs/${id}`).catch(() => ({ data: null })) : Promise.resolve({ data: null })
                 ]);
                 setProjects(projRes.data);
                 if (isEdit && logRes.data) {
@@ -186,7 +186,7 @@ export default function DailyLogFormScreen() {
                         <View className="flex-row flex-wrap">
                             {photos.map((p, idx) => (
                                 <View key={idx} className="w-[30%] aspect-square mr-[3%] mb-3 rounded-2xl overflow-hidden border border-border-light relative">
-                                    <Image source={{ uri: p.url.startsWith('/') ? `${process.env.EXPO_PUBLIC_API_URL}${p.url}` : p.url }} className="w-full h-full" />
+                                    <Image source={{ uri: p.url.startsWith('/') ? `${ASSET_BASE_URL}${p.url}` : p.url }} className="w-full h-full" />
                                     <TouchableOpacity onPress={() => setPhotos(prev => prev.filter((_, i) => i !== idx))} className="absolute top-1 right-1 bg-black/50 w-6 h-6 rounded-full items-center justify-center">
                                         <X size={12} color="white" />
                                     </TouchableOpacity>

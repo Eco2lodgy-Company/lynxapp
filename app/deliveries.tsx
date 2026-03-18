@@ -315,7 +315,7 @@ export default function DeliveriesScreen() {
                 </ScrollView>
             )}
             
-            {["ADMIN", "CONDUCTEUR", "CHEF_EQUIPE"].includes(user?.role || "") && (
+            {["ADMIN", "CONDUCTEUR", "CHEF_EQUIPE"].includes(user?.role || "") && !modalVisible && (
                 <TouchableOpacity 
                     onPress={openCreateModal}
                     className="absolute bottom-10 right-6 bg-primary w-16 h-16 rounded-[24px] items-center justify-center shadow-2xl shadow-primary/30"
@@ -336,18 +336,18 @@ export default function DeliveriesScreen() {
                     <View className="flex-1 justify-end">
                         <Animated.View 
                             entering={SlideInUp.springify()} 
-                            className="bg-slate-900/90 rounded-t-[40px] p-8 h-[92%] border-t border-white/10 shadow-2xl"
+                            className="bg-white rounded-t-[40px] p-8 h-[92%] shadow-2xl"
                         >
                             <View className="flex-row justify-between items-center mb-10">
                                 <View>
-                                    <Text className="text-white text-3xl font-black tracking-tight">{isEditing ? 'Modification' : 'Planification'}</Text>
-                                    <Text className="text-slate-400 text-xs font-bold uppercase tracking-[2px] mt-1">Movement Logistique</Text>
+                                    <Text className="text-secondary text-3xl font-black tracking-tight">{isEditing ? 'Modification' : 'Planification'}</Text>
+                                    <Text className="text-secondary/40 text-xs font-bold uppercase tracking-[2px] mt-1">Movement Logistique</Text>
                                 </View>
                                 <TouchableOpacity 
                                     onPress={() => setModalVisible(false)} 
-                                    className="w-12 h-12 bg-slate-800 rounded-2xl items-center justify-center border border-white/5"
+                                    className="w-12 h-12 bg-bg-soft rounded-2xl items-center justify-center border border-border-light"
                                 >
-                                    <X size={24} color="white" />
+                                    <X size={24} color="#4A3520" />
                                 </TouchableOpacity>
                             </View>
 
@@ -359,9 +359,9 @@ export default function DeliveriesScreen() {
                                             <TouchableOpacity 
                                                 key={p.id}
                                                 onPress={() => setSelectedProject(p.id)}
-                                                className={`mr-3 mb-3 px-5 py-3 rounded-2xl border-2 ${selectedProject === p.id ? 'bg-primary/10 border-primary' : 'bg-slate-950/50 border-white/5'}`}
+                                                className={`mr-3 mb-3 px-5 py-3 rounded-2xl border-2 ${selectedProject === p.id ? 'bg-primary/5 border-primary' : 'bg-bg-soft border-border-light'}`}
                                             >
-                                                <Text className={`font-bold text-sm ${selectedProject === p.id ? 'text-primary' : 'text-slate-500'}`}>
+                                                <Text className={`font-bold text-sm ${selectedProject === p.id ? 'text-primary' : 'text-secondary/60'}`}>
                                                     {p.name}
                                                 </Text>
                                             </TouchableOpacity>
@@ -396,9 +396,9 @@ export default function DeliveriesScreen() {
                                     <View className="mb-10">
                                         <Text className="text-slate-500 text-[10px] font-black uppercase tracking-[2px] mb-3 ml-1">Instructions Logistiques</Text>
                                         <TextInput 
-                                            className="bg-slate-950/50 border border-white/5 text-white p-5 rounded-2xl text-base font-medium min-h-[120px]"
+                                            className="bg-bg-soft border border-border-light text-secondary p-5 rounded-2xl text-base font-medium min-h-[120px]"
                                             placeholder="Détails, horaires, contacts..."
-                                            placeholderTextColor="#334155"
+                                            placeholderTextColor="#A08060"
                                             multiline
                                             textAlignVertical="top"
                                             value={notes}

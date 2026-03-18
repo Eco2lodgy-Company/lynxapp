@@ -36,9 +36,9 @@ export default function ProjectFormScreen() {
         const fetchData = async () => {
             try {
                 const [usersRes, depsRes, projRes] = await Promise.all([
-                    api.get('/users'),
-                    api.get('/departments'),
-                    isEdit ? api.get(`/projects/${id}`) : Promise.resolve({ data: null })
+                    api.get('/users').catch(() => ({ data: [] })),
+                    api.get('/departments').catch(() => ({ data: [] })),
+                    isEdit ? api.get(`/projects/${id}`).catch(() => ({ data: null })) : Promise.resolve({ data: null })
                 ]);
 
                 setUsers(usersRes.data);

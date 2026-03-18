@@ -82,7 +82,7 @@ export default function TasksScreen() {
             options.push({ text: 'Terminer Immédiatement', onPress: () => updateTask(task.id, { status: 'TERMINE', progress: 100 }) });
         }
 
-        options.push({ text: 'Annuler', style: 'cancel' });
+        options.push({ text: 'Annuler', onPress: () => {} });
 
         Alert.alert(
             'Options Supérieur',
@@ -242,7 +242,7 @@ export default function TasksScreen() {
                         animationType="slide"
                         onRequestClose={() => setProgressModal({ visible: false, task: null })}
                     >
-                        <View className="flex-1 bg-black/80 justify-end">
+                        <View className="flex-1 bg-black/80 justify-center items-center px-6">
                             <TouchableOpacity 
                                 className="absolute inset-0"
                                 onPress={() => setProgressModal({ visible: false, task: null })}

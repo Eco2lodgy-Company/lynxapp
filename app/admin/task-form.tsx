@@ -33,9 +33,9 @@ export default function TaskFormScreen() {
         const fetchData = async () => {
             try {
                 const [projRes, usersRes, taskRes] = await Promise.all([
-                    api.get('/projects'),
-                    api.get('/users'),
-                    isEdit ? api.get(`/tasks/${id}`) : Promise.resolve({ data: null })
+                    api.get('/projects').catch(() => ({ data: [] })),
+                    api.get('/users').catch(() => ({ data: [] })),
+                    isEdit ? api.get(`/tasks/${id}`).catch(() => ({ data: null })) : Promise.resolve({ data: null })
                 ]);
 
                 setProjects(projRes.data);

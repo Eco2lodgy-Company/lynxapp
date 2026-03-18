@@ -33,8 +33,8 @@ export default function UserFormScreen() {
         const fetchData = async () => {
             try {
                 const [depsRes, userRes] = await Promise.all([
-                    api.get('/departments'),
-                    isEdit ? api.get(`/users/${id}`) : Promise.resolve({ data: null })
+                    api.get('/departments').catch(() => ({ data: [] })),
+                    isEdit ? api.get(`/users/${id}`).catch(() => ({ data: null })) : Promise.resolve({ data: null })
                 ]);
 
                 setDepartments(depsRes.data);

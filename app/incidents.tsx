@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, RefreshControl, TouchableOpacity, ActivityIndicator, Alert, TextInput, Modal, StyleSheet, Platform, Image, Dimensions } from 'react-native';
-import api from '../lib/api';
+import api, { ASSET_BASE_URL } from '../lib/api';
 import { AlertTriangle, MapPin, Search, ChevronDown, CheckCircle, Clock, ChevronLeft, Plus, Image as ImageIcon, X, Trash2 } from 'lucide-react-native';
 import { useAuth } from '../context/AuthContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,7 +8,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PremiumCard } from '../components/ui/PremiumCard';
-import Animated, { FadeInDown, FadeIn, SlideInUp, ZoomIn } from 'react-native-reanimated';
+import Animated, { FadeInDown, FadeIn, SlideInUp, ZoomIn, FadeInUp } from 'react-native-reanimated';
 import { BlurView } from 'expo-blur';
 import * as ImagePicker from 'expo-image-picker';
 
@@ -219,8 +219,9 @@ export default function IncidentsScreen() {
                                 onPress={() => setSelectedPhotoViewer(p.url)}
                             >
                                 <Image 
-                                    source={{ uri: `${process.env.EXPO_PUBLIC_API_URL}${p.url}` }}
-                                    style={{ width: 100, height: 100 }}
+                                    source={{ uri: `${ASSET_BASE_URL}${p.url}` }}
+                                    className="w-full h-full"
+                                    resizeMode="cover"
                                 />
                             </TouchableOpacity>
                         ))}
@@ -267,11 +268,13 @@ export default function IncidentsScreen() {
                     className="flex-1 justify-center items-center"
                     onPress={() => setSelectedPhotoViewer(null)}
                 >
-                    <Image 
-                        source={{ uri: `${process.env.EXPO_PUBLIC_API_URL}${selectedPhotoViewer}` }}
-                        style={{ width: width, height: width }}
-                        resizeMode="contain"
-                    />
+                    <Animated.View entering={FadeInUp.springify()} className="w-11/12 max-h-[80%] bg-white rounded-[32px] overflow-hidden">
+                        <Image 
+                            source={{ uri: `${ASSET_BASE_URL}${selectedPhotoViewer}` }}
+                            className="w-full h-[400px]"
+                            resizeMode="contain"
+                        />
+                    </Animated.View>
                     <TouchableOpacity 
                         onPress={() => setSelectedPhotoViewer(null)}
                         className="absolute top-16 right-6 w-12 h-12 bg-white/10 rounded-full items-center justify-center border border-white/20"

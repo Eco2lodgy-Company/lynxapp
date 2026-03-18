@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, RefreshControl, TouchableOpacity, ActivityIndicator, TextInput, Alert, Modal, StyleSheet, Platform, Image } from 'react-native';
-import api from '../../lib/api';
+import api, { ASSET_BASE_URL } from '../../lib/api';
 import { 
     ClipboardList, 
     Calendar,
@@ -15,8 +15,15 @@ import {
     ChevronRight,
     Filter,
     AlertTriangle,
-    Package
+    Package,
+    Plus,
+    Save,
+    Send,
+    Camera,
+    Image as ImageIcon,
+    Trash2
 } from 'lucide-react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { Input } from '../../components/ui/Input';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
@@ -24,7 +31,6 @@ import { Button } from '../../components/ui/Button';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PremiumCard } from '../../components/ui/PremiumCard';
 import Animated, { FadeInDown, FadeInUp, Layout, FadeIn } from 'react-native-reanimated';
-import { BlurView } from 'expo-blur';
 
 const STATUS_LABELS: Record<string, string> = {
     BROUILLON: 'BROUILLON',
@@ -45,14 +51,31 @@ export default function ReportsScreen() {
     const { user } = useAuth();
     const [refreshing, setRefreshing] = useState(false);
     const [logs, setLogs] = useState<any[]>([]);
+    const [projects, setProjects] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [actionLoading, setActionLoading] = useState(false);
+    
+    // Validatio/Rejet states
     const [rejectModal, setRejectModal] = useState<{ visible: boolean; logId: string | null }>({ visible: false, logId: null });
     const [selectedLog, setSelectedLog] = useState<any>(null);
     const [counterNotes, setCounterNotes] = useState('');
 
+    // Creation States
+    const [createModal, setCreateModal] = useState(false);
+    const [selectedPhotos, setSelectedPhotos] = useState<any[]>([]);
+    const [newReport, setNewReport] = useState({
+        projectId: '',
+        weather: '',
+        temperature: '',
+        summary: '',
+        workCompleted: '',
+        issues: '',
+        materialsUsed: ''
+    });
+
     const canValidate = user?.role === 'CONDUCTEUR' || user?.role === 'ADMIN';
+    const canCreate = user?.role === 'CHEF_EQUIPE' || user?.role === 'ADMIN' || user?.role === 'CONDUCTEUR';
 
     const fetchLogs = async () => {
         try {
@@ -65,14 +88,31 @@ export default function ReportsScreen() {
         }
     };
 
-    useEffect(() => { fetchLogs(); }, []);
+    const fetchProjects = async () => {
+        try {
+            const response = await api.get('/projects');
+            setProjects(response.data);
+            if (response.data.length > 0) {
+                setNewReport(prev => ({ ...prev, projectId: response.data[0].id }));
+            }
+        } catch (error) {
+            console.error('Error fetching projects:', error);
+        }
+    };
+
+    useEffect(() => { 
+        fetchLogs(); 
+        if (canCreate) fetchProjects();
+    }, []);
 
     const onRefresh = React.useCallback(async () => {
         setRefreshing(true);
         await fetchLogs();
+        if (canCreate) await fetchProjects();
         setRefreshing(false);
     }, []);
 
+    // Validation Action
     const handleValidate = async (logId: string) => {
         setActionLoading(true);
         try {
@@ -87,6 +127,7 @@ export default function ReportsScreen() {
         }
     };
 
+    // Reject Action
     const handleReject = async () => {
         if (!rejectModal.logId) return;
         if (!counterNotes.trim()) {
@@ -106,6 +147,87 @@ export default function ReportsScreen() {
             fetchLogs();
         } catch (err: any) {
             Alert.alert('Erreur', err.response?.data?.error || 'Impossible de rejeter');
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    // Image Upload Handlers
+    const pickImage = async () => {
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsMultipleSelection: true,
+            quality: 0.7,
+        });
+        if (!result.canceled) {
+            setSelectedPhotos([...selectedPhotos, ...result.assets]);
+        }
+    };
+
+    const takePhoto = async () => {
+        const result = await ImagePicker.launchCameraAsync({
+            quality: 0.7,
+        });
+        if (!result.canceled) {
+            setSelectedPhotos([...selectedPhotos, ...result.assets]);
+        }
+    };
+
+    const removeSelectedPhoto = (index: number) => {
+        setSelectedPhotos(prev => prev.filter((_, i) => i !== index));
+    };
+
+    // Create Report Action
+    const handleCreateReport = async (status: 'BROUILLON' | 'SOUMIS') => {
+        if (!newReport.projectId || !newReport.summary.trim()) {
+            Alert.alert('Requis', 'Le projet et le résumé sont obligatoires.');
+            return;
+        }
+
+        setActionLoading(true);
+        try {
+            const uploadedUrls = [];
+            for (const photo of selectedPhotos) {
+                const formData = new FormData();
+                formData.append('file', {
+                    uri: photo.uri,
+                    type: 'image/jpeg',
+                    name: `log_${Date.now()}.jpg`
+                } as any);
+
+                const uploadRes = await api.post('/upload', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+                uploadedUrls.push(uploadRes.data.url);
+            }
+
+            await api.post('/daily-logs', {
+                projectId: newReport.projectId,
+                date: new Date().toISOString(),
+                weather: newReport.weather,
+                temperature: newReport.temperature,
+                summary: newReport.summary,
+                workCompleted: newReport.workCompleted,
+                issues: newReport.issues,
+                materialsUsed: newReport.materialsUsed,
+                status: status,
+                photoUrls: uploadedUrls
+            });
+            Alert.alert('Succès', `Journal ${status === 'SOUMIS' ? 'soumis pour validation' : 'enregistré en brouillon'}.`);
+            setCreateModal(false);
+            setNewReport({
+                projectId: projects.length > 0 ? projects[0].id : '',
+                weather: '',
+                temperature: '',
+                summary: '',
+                workCompleted: '',
+                issues: '',
+                materialsUsed: ''
+            });
+            setSelectedPhotos([]);
+            fetchLogs();
+        } catch (err: any) {
+            Alert.alert('Erreur', err.response?.data?.error || 'Erreur lors de la création');
         } finally {
             setActionLoading(false);
         }
@@ -193,7 +315,7 @@ export default function ReportsScreen() {
                             onChangeText={setSearch}
                             //@ts-ignore
                             placeholderTextColor="#64748B"
-                            className="bg-transparent border-0 h-14"
+                            inputClassName="bg-transparent border-0 h-14"
                             icon={<Search size={22} color="#C8842A" strokeWidth={2.5} />}
                         />
                     </PremiumCard>
@@ -221,6 +343,203 @@ export default function ReportsScreen() {
                     </ScrollView>
                 )}
             </View>
+
+            {/* Fab Create Button */}
+            {canCreate && (
+                <TouchableOpacity
+                    onPress={() => setCreateModal(true)}
+                    activeOpacity={0.8}
+                    className="absolute bottom-6 right-6 w-16 h-16 bg-primary rounded-full items-center justify-center shadow-lg shadow-primary/30 z-30"
+                >
+                    <Plus color="white" size={32} />
+                </TouchableOpacity>
+            )}
+
+            {/* Create Report Modal */}
+            <Modal
+                visible={createModal}
+                animationType="slide"
+                presentationStyle="pageSheet"
+                onRequestClose={() => setCreateModal(false)}
+            >
+                <View className="flex-1 bg-slate-950">
+                    <LinearGradient
+                        colors={['#1e293b', '#0f172a']}
+                        style={StyleSheet.absoluteFill}
+                    />
+                    
+                    <View className="flex-row items-center justify-between p-6 border-b border-white/10" style={{ paddingTop: Platform.OS === 'ios' ? 20 : 40 }}>
+                        <Text className="text-white text-xl font-bold tracking-tight">Rédiger un Rapport</Text>
+                        <TouchableOpacity onPress={() => setCreateModal(false)} className="w-10 h-10 bg-white/5 rounded-full items-center justify-center border border-white/10">
+                            <X size={20} color="#94A3B8" />
+                        </TouchableOpacity>
+                    </View>
+
+                    <ScrollView className="flex-1 p-6" contentContainerStyle={{ paddingBottom: 100 }}>
+                        <Text className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-2 ml-1">Projet</Text>
+                        <View className="bg-white/5 border border-white/10 rounded-2xl mb-6 overflow-hidden">
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="py-2 px-2">
+                                {projects.map((proj) => (
+                                    <TouchableOpacity 
+                                        key={proj.id}
+                                        onPress={() => setNewReport({...newReport, projectId: proj.id})}
+                                        className={`px-4 py-3 rounded-xl mr-2 border ${newReport.projectId === proj.id ? 'bg-primary border-primary' : 'bg-transparent border-white/5'}`}
+                                    >
+                                        <Text className={`font-bold ${newReport.projectId === proj.id ? 'text-white' : 'text-slate-400'}`}>
+                                            {proj.name}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
+                        </View>
+
+                        <View className="flex-row gap-4 mb-6">
+                            <View className="flex-1">
+                                <Text className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-2 ml-1">Météo</Text>
+                                <View className="bg-white/5 border border-white/10 rounded-2xl h-14 justify-center px-4">
+                                    <TextInput
+                                        value={newReport.weather}
+                                        onChangeText={(v) => setNewReport({...newReport, weather: v})}
+                                        placeholder="Ex: Ensoleillé"
+                                        placeholderTextColor="#475569"
+                                        className="text-white font-medium"
+                                    />
+                                </View>
+                            </View>
+                            <View className="flex-1">
+                                <Text className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-2 ml-1">Température (°C)</Text>
+                                <View className="bg-white/5 border border-white/10 rounded-2xl h-14 justify-center px-4">
+                                    <TextInput
+                                        value={newReport.temperature}
+                                        onChangeText={(v) => setNewReport({...newReport, temperature: v})}
+                                        placeholder="Ex: 24"
+                                        keyboardType="numeric"
+                                        placeholderTextColor="#475569"
+                                        className="text-white font-medium"
+                                    />
+                                </View>
+                            </View>
+                        </View>
+
+                        <Text className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-2 ml-1">Résumé de la journée *</Text>
+                        <View className="bg-white/5 border border-white/10 rounded-2xl mb-6 min-h-[120px] p-4">
+                            <TextInput
+                                value={newReport.summary}
+                                onChangeText={(v) => setNewReport({...newReport, summary: v})}
+                                placeholder="Que s'est-il passé aujourd'hui ?"
+                                placeholderTextColor="#475569"
+                                className="text-white font-medium leading-6"
+                                multiline
+                                textAlignVertical="top"
+                            />
+                        </View>
+
+                        <Text className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-2 ml-1">Travaux Réalisés</Text>
+                        <View className="bg-white/5 border border-white/10 rounded-2xl mb-6 min-h-[100px] p-4">
+                            <TextInput
+                                value={newReport.workCompleted}
+                                onChangeText={(v) => setNewReport({...newReport, workCompleted: v})}
+                                placeholder="Détail des avancées..."
+                                placeholderTextColor="#475569"
+                                className="text-white font-medium leading-6"
+                                multiline
+                                textAlignVertical="top"
+                            />
+                        </View>
+
+                        <Text className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-2 ml-1">Problèmes Rencontrés</Text>
+                        <View className="bg-white/5 border border-white/10 rounded-2xl mb-6 min-h-[100px] p-4">
+                            <TextInput
+                                value={newReport.issues}
+                                onChangeText={(v) => setNewReport({...newReport, issues: v})}
+                                placeholder="Difficultés, retards..."
+                                placeholderTextColor="#475569"
+                                className="text-white font-medium leading-6"
+                                multiline
+                                textAlignVertical="top"
+                            />
+                        </View>
+
+                        <Text className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-2 ml-1">Matériaux Utilisés</Text>
+                        <View className="bg-white/5 border border-white/10 rounded-2xl mb-6 min-h-[100px] p-4">
+                            <TextInput
+                                value={newReport.materialsUsed}
+                                onChangeText={(v) => setNewReport({...newReport, materialsUsed: v})}
+                                placeholder="Quantités et types de matériaux..."
+                                placeholderTextColor="#475569"
+                                className="text-white font-medium leading-6"
+                                multiline
+                                textAlignVertical="top"
+                            />
+                        </View>
+
+                        <Text className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-2 ml-1">Photos</Text>
+                        <View className="mb-6">
+                            <View className="flex-row gap-4 mb-4">
+                                <TouchableOpacity 
+                                    onPress={takePhoto}
+                                    className="flex-1 bg-white/5 border border-white/10 rounded-2xl h-14 flex-row items-center justify-center"
+                                >
+                                    <Camera size={20} color="#C8842A" />
+                                    <Text className="text-slate-300 font-bold ml-2">Caméra</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity 
+                                    onPress={pickImage}
+                                    className="flex-1 bg-white/5 border border-white/10 rounded-2xl h-14 flex-row items-center justify-center"
+                                >
+                                    <ImageIcon size={20} color="#C8842A" />
+                                    <Text className="text-slate-300 font-bold ml-2">Galerie</Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            {selectedPhotos.length > 0 && (
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
+                                    {selectedPhotos.map((photo, index) => (
+                                        <View key={index} className="mr-3 relative">
+                                            <Image 
+                                                source={{ uri: photo.uri }} 
+                                                className="w-24 h-24 rounded-2xl border border-white/10" 
+                                            />
+                                            <TouchableOpacity 
+                                                onPress={() => removeSelectedPhoto(index)}
+                                                className="absolute -top-2 -right-2 bg-red-500 rounded-full p-1 border-2 border-slate-900 shadow-lg"
+                                            >
+                                                <Trash2 size={12} color="white" />
+                                            </TouchableOpacity>
+                                        </View>
+                                    ))}
+                                </ScrollView>
+                            )}
+                        </View>
+
+                    </ScrollView>
+
+                    <View className="p-6 border-t border-white/10 bg-slate-900 flex-row gap-4 mb-4">
+                        <TouchableOpacity
+                            onPress={() => handleCreateReport('BROUILLON')}
+                            disabled={actionLoading}
+                            activeOpacity={0.8}
+                            className="flex-1 h-14 bg-white/5 border border-white/10 rounded-xl items-center justify-center flex-row"
+                        >
+                            <Save size={18} color="#94A3B8" className="mr-2" />
+                            <Text className="text-slate-300 font-bold uppercase text-xs tracking-wider">Brouillon</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            onPress={() => handleCreateReport('SOUMIS')}
+                            disabled={actionLoading}
+                            activeOpacity={0.8}
+                            className="flex-1 h-14 bg-primary rounded-xl items-center justify-center shadow-lg shadow-primary/20 flex-row"
+                        >
+                            {actionLoading ? <ActivityIndicator color="white" /> : (
+                                <>
+                                    <Send size={18} color="white" className="mr-2" />
+                                    <Text className="text-white font-bold uppercase text-xs tracking-wider">Soumettre</Text>
+                                </>
+                            )}
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
 
             {/* Log Detail Modal */}
             {selectedLog && (
@@ -296,8 +615,8 @@ export default function ReportsScreen() {
                                                 className="mr-4 w-48 h-64 rounded-3xl overflow-hidden border border-white/10"
                                             >
                                                 <Image 
-                                                    source={{ uri: `${process.env.EXPO_PUBLIC_API_URL}${photo.url}` }} 
-                                                    className="w-full h-full"
+                                                    source={{ uri: `${ASSET_BASE_URL}${photo.url}` }} 
+                                                    className="w-full h-full opacity-80"
                                                     resizeMode="cover"
                                                 />
                                             </View>
@@ -350,7 +669,7 @@ export default function ReportsScreen() {
 
             {/* Reject Modal */}
             {rejectModal.visible && (
-                <View className="absolute inset-0 bg-black/80 justify-end z-50">
+                <View className="absolute inset-0 bg-black/80 justify-center items-center px-6 z-50">
                     <Animated.View 
                         entering={FadeInUp} 
                         className="bg-slate-950 rounded-t-[40px] p-8 border-t border-white/10"

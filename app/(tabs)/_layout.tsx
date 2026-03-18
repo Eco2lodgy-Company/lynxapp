@@ -72,6 +72,7 @@ export default function TabLayout() {
         name="reports"
         options={{
           title: 'Suivi',
+          href: user?.role === 'OUVRIER' ? null : undefined,
           tabBarIcon: ({ color, focused }) => (
             <View style={focused ? styles.activeIconContainer : null}>
               <ClipboardList color={color} size={22} strokeWidth={focused ? 3 : 2} />
@@ -84,6 +85,7 @@ export default function TabLayout() {
           name="messages"
           options={{
             title: 'Messages',
+            href: user?.role === 'OUVRIER' ? null : undefined,
             tabBarIcon: ({ color, focused }) => (
               <View style={focused ? styles.activeIconContainer : null}>
                 <MessageSquare color={color} size={22} strokeWidth={focused ? 3 : 2} />

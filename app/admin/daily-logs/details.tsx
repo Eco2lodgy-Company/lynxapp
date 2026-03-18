@@ -4,7 +4,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ChevronLeft, Check, X, Calendar, User, Thermometer, Sun, Cloud, CloudRain, Briefcase } from 'lucide-react-native';
-import api from '../../../lib/api';
+import api, { ASSET_BASE_URL } from '../../../lib/api';
 import { useAuth } from '../../../context/AuthContext';
 import { Button } from '../../../components/ui/Button';
 import Animated, { FadeInUp } from 'react-native-reanimated';
@@ -145,7 +145,7 @@ export default function DailyLogDetailsScreen() {
                             <View className="flex-row flex-wrap">
                                 {log.photos.map((p: any, idx: number) => (
                                     <TouchableOpacity key={idx} className="w-[48%] aspect-square mr-[2%] mb-[2%] rounded-3xl overflow-hidden shadow-sm">
-                                        <Image source={{ uri: `${process.env.EXPO_PUBLIC_API_URL}${p.url}` }} className="w-full h-full" resizeMode="cover" />
+                                        <Image source={{ uri: `${ASSET_BASE_URL}${p.url}` }} className="w-full h-full" resizeMode="cover" />
                                     </TouchableOpacity>
                                 ))}
                             </View>

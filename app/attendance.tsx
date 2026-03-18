@@ -59,8 +59,16 @@ export default function AttendanceScreen() {
             if (status !== 'granted') {
                 return null;
             }
-            let location = await Location.getCurrentPositionAsync({});
-            return location.coords;
+            
+            // Fix for Android devices where getCurrentPositionAsync hangs indefinitely
+            let location: any = await Promise.race([
+                Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), 4000))
+            ]).catch(async () => {
+                return await Location.getLastKnownPositionAsync();
+            });
+
+            return location?.coords || null;
         } catch (e) {
             console.error("Location error:", e);
             return null;
@@ -303,10 +311,10 @@ export default function AttendanceScreen() {
                             loading={loading}
                             variant={todayRecord?.checkIn && !todayRecord?.checkOut ? 'danger' : 'secondary'}
                             disabled={!todayRecord?.checkIn || !!todayRecord?.checkOut}
-                            className="flex-1 h-20 rounded-3xl"
+                            className={`flex-1 h-20 rounded-3xl shadow-none ${(!todayRecord?.checkIn || todayRecord?.checkOut) ? 'bg-bg-soft border border-border-light' : ''}`}
                         >
                             <View className="items-center">
-                                <Text className={`font-black uppercase tracking-widest ${todayRecord?.checkOut ? 'text-secondary/40' : 'text-white'}`}>
+                                <Text className={`font-black uppercase tracking-widest ${(!todayRecord?.checkIn || todayRecord?.checkOut) ? 'text-secondary/40' : 'text-white'}`}>
                                     {todayRecord?.checkOut ? 'Départ✓' : "Pointer le Départ"}
                                 </Text>
                             </View>

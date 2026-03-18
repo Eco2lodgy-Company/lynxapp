@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ChevronLeft, Filter, Image as ImageIcon, X, MapPin, Calendar, Clock, ChevronRight } from 'lucide-react-native';
-import api from '../lib/api';
+import api, { ASSET_BASE_URL } from '../lib/api';
 import { PremiumCard } from '../components/ui/PremiumCard';
 import Animated, { FadeIn, FadeInDown, ZoomIn } from 'react-native-reanimated';
 
@@ -63,7 +63,7 @@ export default function PhotoGalleryScreen() {
                 {selectedPhoto && (
                     <Animated.View entering={ZoomIn.duration(400)} className="w-full aspect-square">
                         <Image 
-                            source={{ uri: `${process.env.EXPO_PUBLIC_API_URL}${selectedPhoto.url}` }}
+                            source={{ uri: `${ASSET_BASE_URL}${selectedPhoto.url}` }}
                             className="w-full h-full"
                             resizeMode="contain"
                         />
@@ -143,10 +143,11 @@ export default function PhotoGalleryScreen() {
                                     onPress={() => setSelectedPhoto(photo)}
                                     activeOpacity={0.9}
                                     className="bg-white rounded-[32px] overflow-hidden border border-border-light shadow-sm"
+                                    style={{ height: COLUMN_WIDTH }}
                                 >
                                     <Image 
-                                        source={{ uri: `${process.env.EXPO_PUBLIC_API_URL}${photo.url}` }}
-                                        style={{ width: '100%', height: COLUMN_WIDTH * 1.2 }}
+                                        source={{ uri: `${ASSET_BASE_URL}${photo.url}` }}
+                                        style={{ width: '100%', height: '100%' }}
                                         resizeMode="cover"
                                     />
                                     <LinearGradient
