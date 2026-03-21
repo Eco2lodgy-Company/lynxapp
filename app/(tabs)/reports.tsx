@@ -61,9 +61,11 @@ export default function ReportsScreen() {
     const [selectedLog, setSelectedLog] = useState<any>(null);
     const [counterNotes, setCounterNotes] = useState('');
 
-    // Creation States
+    // Creation / Edit States
     const [createModal, setCreateModal] = useState(false);
     const [selectedPhotos, setSelectedPhotos] = useState<any[]>([]);
+    const [editingLogId, setEditingLogId] = useState<string | null>(null);
+    const [existingPhotos, setExistingPhotos] = useState<any[]>([]);
     const [newReport, setNewReport] = useState({
         projectId: '',
         weather: '',
@@ -177,7 +179,50 @@ export default function ReportsScreen() {
         setSelectedPhotos(prev => prev.filter((_, i) => i !== index));
     };
 
-    // Create Report Action
+    // Edit/Delete Additions
+    const handleEditLog = (log: any) => {
+        setEditingLogId(log.id);
+        setNewReport({
+            projectId: log.projectId || log.project?.id || '',
+            weather: log.weather || '',
+            temperature: log.temperature?.toString() || '',
+            summary: log.summary || '',
+            workCompleted: log.workCompleted || '',
+            issues: log.issues || '',
+            materialsUsed: log.materials || ''
+        });
+        setExistingPhotos(log.photos || []);
+        setSelectedPhotos([]);
+        setSelectedLog(null);
+        setCreateModal(true);
+    };
+
+    const handleDeleteLog = (logId: string) => {
+        Alert.alert(
+            "Supprimer le journal",
+            "Êtes-vous sûr de vouloir supprimer ce rapport journalier ?",
+            [
+                { text: "Annuler", style: "cancel" },
+                { 
+                    text: "Supprimer", 
+                    style: "destructive", 
+                    onPress: async () => {
+                        setActionLoading(true);
+                        try {
+                            await api.delete(`/daily-logs/${logId}`);
+                            setSelectedLog(null);
+                            fetchLogs();
+                        } catch (err: any) {
+                            Alert.alert("Erreur", "Impossible de supprimer le journal.");
+                        } finally {
+                            setActionLoading(false);
+                        }
+                    } 
+                }
+            ]
+        );
+    };
+
     const handleCreateReport = async (status: 'BROUILLON' | 'SOUMIS') => {
         if (!newReport.projectId || !newReport.summary.trim()) {
             Alert.alert('Requis', 'Le projet et le résumé sont obligatoires.');
@@ -201,9 +246,8 @@ export default function ReportsScreen() {
                 uploadedUrls.push(uploadRes.data.url);
             }
 
-            await api.post('/daily-logs', {
+            const payload: any = {
                 projectId: newReport.projectId,
-                date: new Date().toISOString(),
                 weather: newReport.weather,
                 temperature: newReport.temperature,
                 summary: newReport.summary,
@@ -212,9 +256,19 @@ export default function ReportsScreen() {
                 materialsUsed: newReport.materialsUsed,
                 status: status,
                 photoUrls: uploadedUrls
-            });
-            Alert.alert('Succès', `Journal ${status === 'SOUMIS' ? 'soumis pour validation' : 'enregistré en brouillon'}.`);
+            };
+
+            if (editingLogId) {
+                await api.put(`/daily-logs/${editingLogId}`, payload);
+                Alert.alert('Succès', 'Journal mis à jour avec succès.');
+            } else {
+                payload.date = new Date().toISOString();
+                await api.post('/daily-logs', payload);
+                Alert.alert('Succès', `Journal ${status === 'SOUMIS' ? 'soumis pour validation' : 'enregistré en brouillon'}.`);
+            }
+
             setCreateModal(false);
+            setEditingLogId(null);
             setNewReport({
                 projectId: projects.length > 0 ? projects[0].id : '',
                 weather: '',
@@ -225,9 +279,10 @@ export default function ReportsScreen() {
                 materialsUsed: ''
             });
             setSelectedPhotos([]);
+            setExistingPhotos([]);
             fetchLogs();
         } catch (err: any) {
-            Alert.alert('Erreur', err.response?.data?.error || 'Erreur lors de la création');
+            Alert.alert('Erreur', err.response?.data?.error || 'Erreur lors de l\'enregistrement');
         } finally {
             setActionLoading(false);
         }
@@ -357,12 +412,15 @@ export default function ReportsScreen() {
                 </TouchableOpacity>
             )}
 
-            {/* Create Report Modal */}
             <Modal
                 visible={createModal}
                 animationType="slide"
                 presentationStyle="pageSheet"
-                onRequestClose={() => setCreateModal(false)}
+                onRequestClose={() => {
+                    setCreateModal(false);
+                    setEditingLogId(null);
+                    setExistingPhotos([]);
+                }}
             >
                 <View className="flex-1 bg-white">
                     <LinearGradient
@@ -371,8 +429,12 @@ export default function ReportsScreen() {
                     />
                     
                     <View className="flex-row items-center justify-between p-6 border-b border-secondary/10" style={{ paddingTop: Platform.OS === 'ios' ? 20 : 40 }}>
-                        <Text className="text-secondary text-xl font-bold tracking-tight">Rédiger un Rapport</Text>
-                        <TouchableOpacity onPress={() => setCreateModal(false)} className="w-10 h-10 bg-bg-soft rounded-full items-center justify-center border border-border-light">
+                        <Text className="text-secondary text-xl font-bold tracking-tight">{editingLogId ? "Modifier le Rapport" : "Rédiger un Rapport"}</Text>
+                        <TouchableOpacity onPress={() => {
+                            setCreateModal(false);
+                            setEditingLogId(null);
+                            setExistingPhotos([]);
+                        }} className="w-10 h-10 bg-bg-soft rounded-full items-center justify-center border border-border-light">
                             <X size={20} color="#A08060" />
                         </TouchableOpacity>
                     </View>
@@ -494,6 +556,22 @@ export default function ReportsScreen() {
                                 </TouchableOpacity>
                             </View>
 
+                            {existingPhotos.length > 0 && (
+                                <View className="mb-4">
+                                    <Text className="text-secondary/50 text-[10px] font-bold tracking-widest uppercase mb-3 ml-1">Déjà attachées</Text>
+                                    <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
+                                        {existingPhotos.map((photo, index) => (
+                                            <View key={index} className="mr-3 relative opacity-60">
+                                                <Image 
+                                                    source={{ uri: `${ASSET_BASE_URL}${photo.url}` }} 
+                                                    className="w-20 h-20 rounded-xl border border-secondary/10" 
+                                                />
+                                            </View>
+                                        ))}
+                                    </ScrollView>
+                                </View>
+                            )}
+
                             {selectedPhotos.length > 0 && (
                                 <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
                                     {selectedPhotos.map((photo, index) => (
@@ -559,12 +637,32 @@ export default function ReportsScreen() {
                                 <Text className="text-primary text-[10px] font-black uppercase tracking-[4px] mb-1">Détail du Journal</Text>
                                 <Text className="text-white text-3xl font-black tracking-tight leading-9">{selectedLog.project?.name}</Text>
                             </View>
-                            <TouchableOpacity 
-                                onPress={() => setSelectedLog(null)}
-                                className="w-12 h-12 bg-white/5 rounded-2xl items-center justify-center border border-white/10"
-                            >
-                                <X size={24} color="#C8842A" />
-                            </TouchableOpacity>
+                            <View className="flex-row gap-2">
+                                {(user?.role === 'ADMIN' || selectedLog.author?.id === user?.id || user?.role === 'CONDUCTEUR') && (selectedLog.status === 'BROUILLON' || selectedLog.status === 'REJETE') && (
+                                    <>
+                                        <TouchableOpacity 
+                                            onPress={() => handleDeleteLog(selectedLog.id)}
+                                            disabled={actionLoading}
+                                            className="w-12 h-12 bg-red-500/10 rounded-2xl items-center justify-center border border-red-500/20"
+                                        >
+                                            <Trash2 size={20} color="#EF4444" />
+                                        </TouchableOpacity>
+                                        <TouchableOpacity 
+                                            onPress={() => handleEditLog(selectedLog)}
+                                            disabled={actionLoading}
+                                            className="w-12 h-12 bg-white/5 rounded-2xl items-center justify-center border border-white/10"
+                                        >
+                                            <FileText size={20} color="#C8842A" />
+                                        </TouchableOpacity>
+                                    </>
+                                )}
+                                <TouchableOpacity 
+                                    onPress={() => setSelectedLog(null)}
+                                    className="w-12 h-12 bg-white/5 rounded-2xl items-center justify-center border border-white/10"
+                                >
+                                    <X size={24} color="#C8842A" />
+                                </TouchableOpacity>
+                            </View>
                         </View>
 
                         <View className="flex-row mb-10 gap-4">

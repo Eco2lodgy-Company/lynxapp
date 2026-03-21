@@ -1,22 +1,18 @@
 import React, { useEffect, useState, useRef } from 'react';
 import {
     View, Text, ScrollView, TextInput, TouchableOpacity,
-    KeyboardAvoidingView, Platform, ActivityIndicator, Alert, Image, StyleSheet, Dimensions
+    KeyboardAvoidingView, Platform, ActivityIndicator, Alert, Image, StyleSheet
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import api, { ASSET_BASE_URL } from '../../lib/api';
-import { Input } from '../../components/ui/Input';
-import { ChevronLeft, Send, Paperclip, Camera, MapPin, Clock, MoreVertical, X, AlertTriangle, ChevronRight } from 'lucide-react-native';
+import { ChevronLeft, Send, Paperclip, Clock, AlertCircle, CheckCircle2, X } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Video, ResizeMode } from 'expo-av';
-import Animated, { FadeIn, FadeInDown, SlideInRight, Layout, SlideInUp, FadeOut } from 'react-native-reanimated';
+import Animated, { FadeInDown, Layout } from 'react-native-reanimated';
 import { useAuth } from '../../context/AuthContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-const { width } = Dimensions.get('window');
 
 export default function ConversationScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
@@ -25,139 +21,105 @@ export default function ConversationScreen() {
     const insets = useSafeAreaInsets();
     const scrollRef = useRef<ScrollView>(null);
 
-    const [messages, setMessages] = useState<any[]>([]);
-    const [conversation, setConversation] = useState<any>(null);
+    const [feedback, setFeedback] = useState<any>(null);
+    const [replies, setReplies] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [text, setText] = useState('');
     const [sending, setSending] = useState(false);
-    const [attachments, setAttachments] = useState<{uri: string, type: string, name: string}[]>([]);
+    const [attachment, setAttachment] = useState<{uri: string, type: string, name: string} | null>(null);
 
-    // Mention logic
-    const [showIncidentsMenu, setShowIncidentsMenu] = useState(false);
-    const [incidents, setIncidents] = useState<any[]>([]);
-    const [loadingIncidents, setLoadingIncidents] = useState(false);
-    const [linkedIncident, setLinkedIncident] = useState<any>(null);
-
-    const fetchMessages = async () => {
+    const fetchData = async () => {
         try {
-            const res = await api.get(`/conversations/${id}`);
-            setConversation(res.data);
-            setMessages(res.data.messages || []);
+            const [fbRes, repRes] = await Promise.all([
+                api.get(`/feedbacks/${id}`),
+                api.get(`/feedbacks/${id}/replies`)
+            ]);
+            setFeedback(fbRes.data);
+            
+            // Build pseudo-reply for the original feedback message
+            const originalMessage = {
+                id: 'original',
+                content: fbRes.data.message,
+                createdAt: fbRes.data.createdAt,
+                authorId: fbRes.data.author?.id,
+                author: fbRes.data.author ? {
+                    firstName: fbRes.data.author.firstName,
+                    lastName: fbRes.data.author.lastName,
+                    role: fbRes.data.author.role
+                } : { firstName: 'Client', lastName: '', role: 'CLIENT' },
+                isOriginal: true
+            };
+            
+            setReplies([originalMessage, ...repRes.data]);
         } catch (err) {
-            console.error('Error loading conversation:', err);
+            console.error('Error loading feedback discussion:', err);
         } finally {
             setLoading(false);
         }
     };
 
-    const fetchIncidents = async () => {
-        setLoadingIncidents(true);
-        try {
-            const res = await api.get('/incidents');
-            // Filter active ones
-            setIncidents(res.data.filter((inc: any) => inc.status === 'OUVERT' || inc.status === 'EN_COURS'));
-        } catch (err) {
-            console.error('Error loading incidents:', err);
-        } finally {
-            setLoadingIncidents(false);
-        }
-    };
-
     useEffect(() => {
-        fetchMessages();
-        const interval = setInterval(fetchMessages, 5000);
+        fetchData();
+        const interval = setInterval(fetchData, 5000);
         return () => clearInterval(interval);
     }, [id]);
 
     useEffect(() => {
         setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 300);
-    }, [messages.length]);
-
-    const handleTextChange = (val: string) => {
-        setText(val);
-        if (val.endsWith('/') && (user?.role === 'ADMIN' || user?.role === 'CONDUCTEUR' || user?.role === 'CHEF_EQUIPE')) {
-            setShowIncidentsMenu(true);
-            fetchIncidents();
-        } else if (showIncidentsMenu && !val.includes('/')) {
-            setShowIncidentsMenu(false);
-        }
-    };
-
-    const selectIncident = (incident: any) => {
-        setLinkedIncident(incident);
-        setShowIncidentsMenu(false);
-        // Remove the '/' from text
-        if (text.endsWith('/')) {
-            setText(text.slice(0, -1));
-        }
-    };
+    }, [replies.length]);
 
     const sendMessage = async () => {
-        if (!text.trim() && attachments.length === 0 && !linkedIncident) return;
+        if (!text.trim() && !attachment) return;
         setSending(true);
         const messageText = text.trim();
-        const currentIncident = linkedIncident;
-        const currentAttachments = [...attachments];
+        const currentAttachment = attachment;
+        
         setText('');
-        setLinkedIncident(null);
-        setAttachments([]);
+        setAttachment(null);
 
-        // Optimistic update — show the message instantly
+        // Optimistic update
         const optimisticMsg = {
             id: `temp-${Date.now()}`,
             authorId: user?.id,
-            author: { firstName: user?.name?.split(' ')[0] || '', lastName: '' },
+            author: { firstName: user?.name?.split(' ')[0] || '', lastName: '', role: user?.role },
             content: messageText,
-            attachments: [],
+            imageUrl: currentAttachment ? currentAttachment.uri : null, // local uri just for preview
             createdAt: new Date().toISOString(),
             _optimistic: true,
         };
-        setMessages(prev => [...prev, optimisticMsg]);
+        setReplies(prev => [...prev, optimisticMsg]);
 
         try {
-            let uploadedUrls: any[] = [];
+            const formData = new FormData();
+            formData.append('content', messageText);
             
-            // Handle media attachments
-            for (const att of currentAttachments) {
-                const formData = new FormData();
-                formData.append('file', {
-                    uri: att.uri,
-                    type: att.type,
-                    name: att.name
+            if (currentAttachment) {
+                formData.append('photo', {
+                    uri: currentAttachment.uri,
+                    type: currentAttachment.type,
+                    name: currentAttachment.name
                 } as any);
-
-                const uploadRes = await api.post('/upload', formData, {
-                    headers: { 'Content-Type': 'multipart/form-data' }
-                });
-                if (uploadRes.data?.url) {
-                    uploadedUrls.push(uploadRes.data.url);
-                }
             }
 
-            // Add linked incident to attachments metadata
-            if (currentIncident) {
-                uploadedUrls.push({
-                    type: 'incident_mention',
-                    incidentId: currentIncident.id,
-                    title: currentIncident.title,
-                    severity: currentIncident.severity
-                });
-            }
-
-            await api.post('/messages', {
-                conversationId: id,
-                content: messageText,
-                attachments: uploadedUrls,
+            // Must use multipart/form-data for the web backend's feedback replies
+            await api.post(`/feedbacks/${id}/replies`, formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
             });
-            setAttachments([]);
-            fetchMessages();
+            
+            setAttachment(null);
+            fetchData();
+            
+            // Auto update status if pending
+            if (feedback?.status === 'EN_ATTENTE' && user?.role !== 'CLIENT') {
+                api.put(`/feedbacks/${id}`, { status: 'EN_COURS' }).catch(console.error);
+            }
+            
         } catch (err: any) {
-            Alert.alert('Erreur', err.response?.data?.error || "Impossible d'envoyer le message");
+            console.error('Send error:', err);
+            Alert.alert('Erreur', "Impossible d'envoyer la réponse");
             setText(messageText);
-            setLinkedIncident(currentIncident);
-            setAttachments(currentAttachments);
-            // Remove optimistic message
-            setMessages(prev => prev.filter(m => !(m as any)._optimistic));
+            setAttachment(currentAttachment);
+            setReplies(prev => prev.filter(m => !(m as any)._optimistic));
         } finally {
             setSending(false);
         }
@@ -191,11 +153,11 @@ export default function ConversationScreen() {
                 const uri = asset.uri;
                 const isVideo = asset.type === 'video';
                 const type = isVideo ? 'video/mp4' : 'image/jpeg';
-                // Always append extension to avoid React Native missing filename matching in FormData boundary parser
+                // Always append extension
                 const ext = isVideo ? '.mp4' : '.jpg';
                 const baseName = uri.split('/').pop() || `media-${Date.now()}`;
                 const name = baseName.includes('.') ? baseName : `${baseName}${ext}`;
-                setAttachments(prev => [...prev, { uri, type, name }]);
+                setAttachment({ uri, type, name });
             }
         } catch (error) {
             console.error('Error picking media:', error);
@@ -207,7 +169,7 @@ export default function ConversationScreen() {
             'Joindre un média',
             'Sélecteur de fichiers LYNX',
             [
-                { text: 'Appareil Photo', onPress: () => pickMedia(true) },
+                { text: 'Appareil Photo / Caméra', onPress: () => pickMedia(true) },
                 { text: 'Bibliothèque', onPress: () => pickMedia(false) },
                 { text: 'Annuler', style: 'cancel' },
             ]
@@ -227,37 +189,26 @@ export default function ConversationScreen() {
         return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
     };
 
-    const groupedMessages: { date: string; items: any[] }[] = [];
+    const groupedReplies: { date: string; items: any[] }[] = [];
     let lastDate = '';
-    for (const msg of messages) {
+    for (const msg of replies) {
         const date = formatDate(msg.createdAt);
         if (date !== lastDate) {
-            groupedMessages.push({ date, items: [] });
+            groupedReplies.push({ date, items: [] });
             lastDate = date;
         }
-        groupedMessages[groupedMessages.length - 1].items.push(msg);
+        groupedReplies[groupedReplies.length - 1].items.push(msg);
     }
 
-    const displayName = conversation?.name ||
-        (conversation?.members?.filter((m: any) => m.userId !== user?.id)?.[0]?.user
-            ? `${conversation.members.filter((m: any) => m.userId !== user?.id)[0].user.firstName} ${conversation.members.filter((m: any) => m.userId !== user?.id)[0].user.lastName}`
-            : 'Discussion');
+    const STATUS_MAP: Record<string, { label: string; color: string; icon: any }> = {
+        EN_ATTENTE: { label: "En attente", color: "text-amber-500", icon: Clock },
+        EN_COURS: { label: "En traitement", color: "text-blue-500", icon: AlertCircle },
+        RESOLU: { label: "Résolu", color: "text-emerald-500", icon: CheckCircle2 },
+        FERME: { label: "Fermé", color: "text-slate-400", icon: X },
+    };
 
-    const IncidentMentionCard = ({ incident, isMe }: { incident: any, isMe: boolean }) => (
-        <TouchableOpacity 
-            onPress={() => router.push('/incidents')}
-            className={`mt-2 p-4 rounded-2xl border flex-row items-center ${isMe ? 'bg-white/10 border-white/20' : 'bg-white border-slate-100'}`}
-        >
-            <View className="w-10 h-10 rounded-xl bg-red-500/20 items-center justify-center mr-3">
-                <AlertTriangle size={20} color={isMe ? '#FFF' : '#EF4444'} />
-            </View>
-            <View className="flex-1">
-                <Text className={`text-[10px] font-black uppercase tracking-widest ${isMe ? 'text-white/60' : 'text-slate-400'}`}>Incident Mentionné</Text>
-                <Text className={`font-black text-sm ${isMe ? 'text-white' : 'text-secondary'}`} numberOfLines={1}>{incident.title}</Text>
-            </View>
-            <ChevronRight size={16} color={isMe ? '#FFF' : '#4A3520'} />
-        </TouchableOpacity>
-    );
+    const statusMeta = feedback ? (STATUS_MAP[feedback.status] || STATUS_MAP.EN_ATTENTE) : STATUS_MAP.EN_ATTENTE;
+    const StatusIcon = statusMeta.icon;
 
     return (
         <KeyboardAvoidingView
@@ -279,17 +230,21 @@ export default function ConversationScreen() {
                         <ChevronLeft size={24} color="#E67E22" strokeWidth={3} />
                     </TouchableOpacity>
                     <View className="flex-1">
-                        <Text className="text-secondary font-black text-xl tracking-tight" numberOfLines={1}>{displayName}</Text>
-                        <View className="flex-row items-center mt-0.5">
-                            <View className="w-2 h-2 rounded-full bg-emerald-500 mr-2 shadow-sm shadow-emerald-500/50" />
-                            <Text className="text-secondary/40 text-[10px] font-black uppercase tracking-[3px]" numberOfLines={1}>
-                                {conversation?.project ? conversation.project.name : 'CANAL SÉCURISÉ LYNX'}
+                        <Text className="text-secondary font-black text-lg tracking-tight" numberOfLines={1}>{feedback?.subject || 'Chargement...'}</Text>
+                        <View className="flex-row items-center mt-1">
+                            {feedback && (
+                                <View className="flex-row items-center bg-bg-soft px-1.5 py-0.5 rounded-md border border-border-light mr-2">
+                                    <StatusIcon size={8} color={statusMeta.color.replace('text-', '')} className="mr-1" />
+                                    <Text className={`text-[8px] font-black uppercase tracking-[1px] ${statusMeta.color}`}>
+                                        {statusMeta.label}
+                                    </Text>
+                                </View>
+                            )}
+                            <Text className="text-secondary/40 text-[9px] font-black uppercase tracking-[2px]" numberOfLines={1}>
+                                {feedback?.project ? feedback.project.name : 'ESPACE CLIENT LYNX'}
                             </Text>
                         </View>
                     </View>
-                    <TouchableOpacity className="w-11 h-11 bg-bg-soft rounded-2xl items-center justify-center border border-border-light">
-                        <MoreVertical size={22} color="#A08060" />
-                    </TouchableOpacity>
                 </View>
             </BlurView>
 
@@ -306,199 +261,133 @@ export default function ConversationScreen() {
                     showsVerticalScrollIndicator={false}
                     keyboardShouldPersistTaps="handled"
                 >
-                    {groupedMessages.length === 0 ? (
-                        <View className="flex-1 items-center justify-center py-24 opacity-20">
-                            <View className="w-24 h-24 bg-bg-soft rounded-[40px] items-center justify-center mb-8">
-                                <Send size={40} color="#4A3520" strokeWidth={1.5} />
-                            </View>
-                            <Text className="text-secondary font-black text-xs uppercase tracking-[4px] text-center px-10">
-                                INITIALISATION DE LA TRANSMISSION
-                            </Text>
-                        </View>
-                    ) : (
-                        groupedMessages.map((group, gi) => (
-                            <View key={gi}>
-                                <View className="flex-row items-center my-10">
-                                    <View className="flex-1 h-[1px] bg-border-light/40" />
-                                    <View className="bg-bg-soft px-5 py-2 rounded-2xl border border-border-light mx-4 shadow-sm">
-                                        <Text className="text-secondary/50 text-[10px] font-black uppercase tracking-[3px]">{group.date}</Text>
-                                    </View>
-                                    <View className="flex-1 h-[1px] bg-border-light/40" />
+                    {groupedReplies.map((group, gi) => (
+                        <View key={gi}>
+                            <View className="flex-row items-center my-8">
+                                <View className="flex-1 h-[1px] bg-border-light/50" />
+                                <View className="bg-bg-soft px-4 py-1.5 rounded-xl mx-3 shadow-sm border border-border-light">
+                                    <Text className="text-secondary/50 text-[9px] font-black uppercase tracking-[2px]">{group.date}</Text>
                                 </View>
-                                {group.items.map((msg: any, idx: number) => {
-                                    const isMe = msg.authorId === user?.id;
-                                    const rawAttachments = msg.attachments ? (typeof msg.attachments === 'string' ? JSON.parse(msg.attachments) : msg.attachments) : [];
-                                    
-                                    const mediaAttachments = rawAttachments.filter((alt: any) => typeof alt === 'string');
-                                    const mentionAttachments = rawAttachments.filter((alt: any) => typeof alt === 'object' && alt.type === 'incident_mention');
-
-                                    return (
-                                        <Animated.View 
-                                            key={msg.id} 
-                                            entering={FadeInDown.delay(idx * 50)}
-                                            layout={Layout.springify()}
-                                            className={`mb-8 max-w-[88%] ${isMe ? 'self-end items-end' : 'self-start items-start'}`}
-                                        >
-                                            {!isMe && (
-                                                <Text className="text-secondary/40 text-[10px] font-black uppercase tracking-[3px] mb-2 ml-3">
-                                                    {msg.author?.firstName} {msg.author?.lastName}
-                                                </Text>
-                                            )}
-                                            
-                                            <View className={`p-1.5 rounded-[30px] shadow-sm ${isMe ? 'bg-primary border border-primary/20' : 'bg-bg-soft border border-border-light'}`}>
-                                                {mediaAttachments.length > 0 && (
-                                                    <View className="mb-1">
-                                                        {mediaAttachments.map((url: string, i: number) => {
-                                                            const isVideo = url.toLowerCase().endsWith('.mp4') || url.toLowerCase().endsWith('.mov');
-                                                            return (
-                                                                <View key={i} className="w-72 h-72 rounded-[25px] overflow-hidden bg-black/5 items-center justify-center">
-                                                                    {isVideo ? (
-                                                                        <Video
-                                                                            source={{ uri: `${ASSET_BASE_URL}${url}` }}
-                                                                            useNativeControls
-                                                                            resizeMode={ResizeMode.COVER}
-                                                                            style={{ width: '100%', height: '100%' }}
-                                                                        />
-                                                                    ) : (
-                                                                        <Image
-                                                                            source={{ uri: `${ASSET_BASE_URL}${url}` }}
-                                                                            className="w-full h-full"
-                                                                            resizeMode="cover"
-                                                                        />
-                                                                    )}
-                                                                </View>
-                                                            );
-                                                        })}
-                                                    </View>
-                                                )}
-                                                {msg.content ? (
-                                                    <View className="px-5 py-4">
-                                                        <Text className={`text-[15px] leading-6 font-bold ${isMe ? 'text-white' : 'text-secondary'}`}>
-                                                            {msg.content}
-                                                        </Text>
-                                                    </View>
-                                                ) : null}
-
-                                                {mentionAttachments.length > 0 && (
-                                                    mentionAttachments.map((inc: any, ii: number) => (
-                                                        <IncidentMentionCard key={ii} incident={inc} isMe={isMe} />
-                                                    ))
-                                                )}
-                                            </View>
-
-                                            <View className={`flex-row items-center mt-2 mx-3 ${isMe ? 'flex-row-reverse' : ''}`}>
-                                                <Text className="text-secondary/30 text-[9px] font-black tracking-[2px] uppercase">
-                                                    {formatTime(msg.createdAt)}
-                                                </Text>
-                                                {isMe && <View className="w-1.5 h-1.5 rounded-full bg-primary mx-2 opacity-40" />}
-                                            </View>
-                                        </Animated.View>
-                                    );
-                                })}
+                                <View className="flex-1 h-[1px] bg-border-light/50" />
                             </View>
-                        ))
-                    )}
-                </ScrollView>
-            )}
+                            {group.items.map((msg: any, idx: number) => {
+                                const isMe = (msg.authorId === user?.id) || (msg.author?.role === user?.role && msg.author?.role !== 'CLIENT');
+                                const isClient = msg.author?.role === 'CLIENT';
+                                
+                                // To align with Web App: Clients on left, Staff (Admin/Conducteur) on right.
+                                const isRight = isMe; 
 
-            {/* Incident Selection Menu */}
-            {showIncidentsMenu && (
-                <Animated.View entering={SlideInUp} exiting={FadeOut} className="absolute bottom-24 left-5 right-5 z-50">
-                    <BlurView intensity={100} tint="dark" className="rounded-[30px] overflow-hidden border border-white/10 shadow-2xl">
-                        <View className="p-5 border-b border-white/5 flex-row justify-between items-center">
-                            <Text className="text-white font-black text-xs uppercase tracking-[3px]">Mentionner Incident</Text>
-                            <TouchableOpacity onPress={() => setShowIncidentsMenu(false)}>
-                                <X size={18} color="white" />
-                            </TouchableOpacity>
+                                return (
+                                    <Animated.View 
+                                        key={msg.id} 
+                                        entering={FadeInDown.delay(idx * 50)}
+                                        layout={Layout.springify()}
+                                        className={`mb-6 max-w-[88%] ${isRight ? 'self-end items-end' : 'self-start items-start'}`}
+                                    >
+                                        {!isRight && (
+                                            <Text className="text-secondary/40 text-[9px] font-black uppercase tracking-[2px] mb-1.5 ml-2">
+                                                {msg.author?.firstName} {msg.author?.lastName} 
+                                                {msg.isOriginal ? ' (Demande initiale)' : ''}
+                                            </Text>
+                                        )}
+                                        
+                                        <View className={`p-1 rounded-[28px] shadow-sm ${isRight ? 'bg-primary border border-primary/20' : 'bg-bg-soft border border-border-light'} ${msg._optimistic ? 'opacity-70' : ''}`}>
+                                            {msg.imageUrl && (
+                                                <View className="w-64 h-64 rounded-[24px] overflow-hidden bg-black/5 items-center justify-center mb-1">
+                                                    {(msg.imageUrl.toLowerCase().endsWith('.mp4') || msg.imageUrl.toLowerCase().endsWith('.mov')) ? (
+                                                        <Video
+                                                            source={{ uri: msg.imageUrl.startsWith('http') || msg.imageUrl.startsWith('file://') ? msg.imageUrl : `${ASSET_BASE_URL}${msg.imageUrl}` }}
+                                                            useNativeControls
+                                                            resizeMode={ResizeMode.COVER}
+                                                            style={{ width: '100%', height: '100%' }}
+                                                        />
+                                                    ) : (
+                                                        <Image
+                                                            source={{ uri: msg.imageUrl.startsWith('http') || msg.imageUrl.startsWith('file://') ? msg.imageUrl : `${ASSET_BASE_URL}${msg.imageUrl}` }}
+                                                            className="w-full h-full"
+                                                            resizeMode="cover"
+                                                        />
+                                                    )}
+                                                </View>
+                                            )}
+                                            {msg.content ? (
+                                                <View className="px-5 py-3.5">
+                                                    <Text className={`text-[14px] leading-[22px] font-bold ${isRight ? 'text-white' : 'text-secondary'}`}>
+                                                        {msg.content}
+                                                    </Text>
+                                                </View>
+                                            ) : null}
+                                        </View>
+
+                                        <View className={`flex-row items-center mt-1.5 mx-2 ${isRight ? 'flex-row-reverse' : ''}`}>
+                                            <Text className="text-secondary/30 text-[8px] font-black tracking-[1px] uppercase">
+                                                {formatTime(msg.createdAt)}
+                                            </Text>
+                                            {isRight && <View className="w-1.5 h-1.5 rounded-full bg-primary mx-2 opacity-30" />}
+                                        </View>
+                                    </Animated.View>
+                                );
+                            })}
                         </View>
-                        <ScrollView style={{ maxHeight: 300 }}>
-                            {loadingIncidents ? (
-                                <ActivityIndicator color="#E67E22" className="my-10" />
-                            ) : incidents.length === 0 ? (
-                                <Text className="text-slate-500 text-center py-10 italic">Aucun incident ouvert</Text>
-                            ) : incidents.map(inc => (
-                                <TouchableOpacity 
-                                    key={inc.id}
-                                    onPress={() => selectIncident(inc)}
-                                    className="p-5 border-b border-white/5 flex-row items-center"
-                                >
-                                    <View className="w-10 h-10 rounded-xl bg-red-500/20 items-center justify-center mr-4">
-                                        <AlertTriangle size={20} color="#EF4444" />
-                                    </View>
-                                    <View className="flex-1">
-                                        <Text className="text-white font-bold" numberOfLines={1}>{inc.title}</Text>
-                                        <Text className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">{inc.project.name}</Text>
-                                    </View>
-                                </TouchableOpacity>
-                            ))}
-                        </ScrollView>
-                    </BlurView>
-                </Animated.View>
+                    ))}
+                </ScrollView>
             )}
 
             {/* Input Bar */}
             <BlurView intensity={Platform.OS === 'ios' ? 95 : 100} tint="light" style={{ paddingBottom: Math.max(insets.bottom, 20) }} className="border-t border-border-light/50">
-                {linkedIncident && (
-                    <Animated.View entering={FadeIn} className="px-5 py-3 bg-primary/10 flex-row items-center justify-between border-b border-primary/20">
-                        <View className="flex-row items-center flex-1">
-                            <AlertTriangle size={14} color="#C8842A" />
-                            <Text className="text-primary font-black text-xs ml-3" numberOfLines={1}>Lié à: {linkedIncident.title}</Text>
+                {attachment && (
+                    <View className="px-5 py-4 bg-bg-soft flex-row items-center border-b border-border-light shadow-sm">
+                        <View className="w-14 h-14 rounded-xl border border-border-light overflow-hidden shadow-sm mr-3">
+                            {attachment.type.includes('video') ? (
+                                <Video source={{ uri: attachment.uri }} className="w-full h-full" resizeMode={ResizeMode.COVER} />
+                            ) : (
+                                <Image source={{ uri: attachment.uri }} className="w-full h-full" />
+                            )}
                         </View>
-                        <TouchableOpacity onPress={() => setLinkedIncident(null)}>
-                            <X size={16} color="#C8842A" />
+                        <View className="flex-1">
+                            <Text className="text-secondary font-black text-[10px] uppercase tracking-widest">Média sélectionné</Text>
+                            <Text className="text-secondary/40 text-[9px] font-bold truncate">{attachment.name}</Text>
+                        </View>
+                        <TouchableOpacity 
+                            onPress={() => setAttachment(null)}
+                            className="w-8 h-8 rounded-full bg-bg-soft border border-border-light items-center justify-center"
+                        >
+                            <X size={14} color="#EF4444" strokeWidth={3} />
                         </TouchableOpacity>
-                    </Animated.View>
-                )}
-
-                {attachments.length > 0 && (
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} className="px-5 py-5 bg-white/50">
-                        {attachments.map((att, i) => (
-                            <View key={i} className="mr-5 relative">
-                                <View className="w-24 h-24 rounded-[24px] border border-border-light overflow-hidden shadow-sm">
-                                    <Image source={{ uri: att.uri }} className="w-full h-full" />
-                                </View>
-                                <TouchableOpacity 
-                                    onPress={() => setAttachments(prev => prev.filter((_, idx) => idx !== i))}
-                                    className="absolute -top-2 -right-2 bg-secondary rounded-full w-8 h-8 items-center justify-center border-2 border-white shadow-xl"
-                                >
-                                    <X color="white" size={16} strokeWidth={3} />
-                                </TouchableOpacity>
-                            </View>
-                        ))}
-                    </ScrollView>
+                    </View>
                 )}
                 
-                <View className="px-5 py-6 flex-row items-center">
+                <View className="px-5 py-4 flex-row items-end">
                     <TouchableOpacity
                         onPress={handleAttachPhoto}
                         hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-                        className="w-14 h-14 rounded-2xl bg-bg-soft items-center justify-center border border-border-light mr-4 shadow-sm"
+                        className="w-12 h-12 rounded-xl bg-bg-soft items-center justify-center border border-border-light mr-3 shadow-sm mb-1"
                     >
-                        <Paperclip size={24} color="#E67E22" strokeWidth={2.5} />
+                        <Paperclip size={20} color="#E67E22" strokeWidth={2.5} />
                     </TouchableOpacity>
 
-                    <View className="flex-1 bg-bg-soft border border-border-light rounded-[28px] px-6 py-2 min-h-[58px] justify-center shadow-inner">
+                    <View className="flex-1 bg-bg-soft border border-border-light rounded-3xl px-5 py-1 min-h-[50px] justify-center shadow-inner">
                         <TextInput
-                            className="text-secondary text-[16px] font-bold py-3"
-                            placeholder="Transmission sécurisée..."
+                            className="text-secondary text-[15px] font-bold py-3"
+                            placeholder="Écrire une réponse..."
                             placeholderTextColor="#A08060"
                             value={text}
-                            onChangeText={handleTextChange}
+                            onChangeText={setText}
                             multiline
-                            style={{ maxHeight: 120 }}
+                            style={{ maxHeight: 100 }}
                         />
                     </View>
 
                     <TouchableOpacity
                         onPress={sendMessage}
-                        disabled={sending || (!text.trim() && attachments.length === 0 && !linkedIncident)}
+                        disabled={sending || (!text.trim() && !attachment)}
                         hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-                        className={`w-14 h-14 rounded-2xl items-center justify-center ml-4 shadow-2xl ${(text.trim() || attachments.length > 0 || linkedIncident) ? 'bg-primary shadow-primary/40' : 'bg-bg-soft border border-border-light'}`}
+                        className={`w-12 h-12 rounded-xl items-center justify-center ml-3 shadow-xl mb-1 ${(text.trim() || attachment) ? 'bg-primary shadow-primary/40' : 'bg-bg-soft border border-border-light'}`}
                     >
                         {sending ? (
                             <ActivityIndicator size="small" color="white" />
                         ) : (
-                            <Send size={24} color={(text.trim() || attachments.length > 0 || linkedIncident) ? 'white' : '#A08060'} strokeWidth={3} />
+                            <Send size={20} color={(text.trim() || attachment) ? 'white' : '#A08060'} strokeWidth={3} />
                         )}
                     </TouchableOpacity>
                 </View>
