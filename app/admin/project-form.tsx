@@ -118,7 +118,11 @@ export default function ProjectFormScreen() {
                 <Text className="text-secondary text-2xl font-black tracking-tight">{isEdit ? 'Modifier' : 'Nouveau'} Projet</Text>
             </View>
 
-            <ScrollView className="flex-1 px-6 pt-8" showsVerticalScrollIndicator={false}>
+            <ScrollView 
+                className="flex-1 px-6 pt-8" 
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+            >
                 <Animated.View entering={FadeInUp.duration(600)}>
                     <Input label="Nom du Projet" value={form.name} onChangeText={(t) => setForm(f => ({ ...f, name: t }))} placeholder="Villa Alpha" icon={<Briefcase size={18} color="#A08060" />} />
                     <Input label="Adresse" value={form.address} onChangeText={(t) => setForm(f => ({ ...f, address: t }))} placeholder="123 Rue de la Paix" icon={<MapPin size={18} color="#A08060" />} />

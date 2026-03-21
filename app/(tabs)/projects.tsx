@@ -286,32 +286,31 @@ export default function ProjectsScreen() {
                 {/* Edit Progress Modal */}
                 {editModalVisible && editingProject && (
                     <Animated.View entering={FadeIn} className="absolute inset-0 bg-black/60 justify-center items-center z-50 px-6">
-                        <Animated.View 
-                            entering={FadeInUp} 
-                            className="bg-slate-900 rounded-[40px] p-8 border border-white/10 w-full shadow-2xl"
-                            style={{ 
-                                shadowColor: '#000', 
-                                shadowOffset: { width: 0, height: 20 }, 
-                                shadowOpacity: 0.5, 
-                                shadowRadius: 30,
-                                elevation: 24
-                            }}
-                        >
-                            <View className="flex-row justify-between items-center mb-8">
-                                <View>
-                                    <Text className="text-white text-3xl font-black tracking-tight">Mise à jour</Text>
-                                    <Text className="text-slate-400 text-xs font-bold uppercase tracking-[2px] mt-1">{editingProject.name}</Text>
-                                </View>
-                                <TouchableOpacity 
-                                    onPress={() => setEditModalVisible(false)} 
-                                    className="w-12 h-12 bg-slate-800 rounded-full items-center justify-center border border-white/10"
-                                >
-                                    <X size={24} color="white" />
-                                </TouchableOpacity>
+                    <Animated.View 
+                        entering={FadeInUp} 
+                        className="bg-white rounded-[40px] p-8 border border-border-light w-full shadow-2xl"
+                        style={{ 
+                            shadowColor: '#000', 
+                            shadowOffset: { width: 0, height: 20 }, 
+                            shadowOpacity: 0.15, 
+                            shadowRadius: 30,
+                            elevation: 24
+                        }}>
+                        <View className="flex-row justify-between items-center mb-8">
+                            <View>
+                                <Text className="text-secondary text-3xl font-black tracking-tight">Mise à jour</Text>
+                                <Text className="text-secondary/50 text-xs font-bold uppercase tracking-[2px] mt-1">{editingProject.name}</Text>
+                            </View>
+                            <TouchableOpacity 
+                                onPress={() => setEditModalVisible(false)} 
+                                className="w-12 h-12 bg-bg-soft rounded-full items-center justify-center border border-border-light"
+                            >
+                                <X size={24} color="#4A3520" />
+                            </TouchableOpacity>
                             </View>
                             
                             <View className="mb-10 items-center">
-                                <Text className="text-slate-500 text-[10px] font-black uppercase tracking-[3px] mb-6 text-center">Progression du Chantier</Text>
+                                <Text className="text-secondary/50 text-[10px] font-black uppercase tracking-[3px] mb-6 text-center">Progression du Chantier</Text>
                                 <View className="flex-row items-center justify-center mb-4">
                                     <Input
                                         value={newProgress}
@@ -324,11 +323,11 @@ export default function ProjectsScreen() {
                                         keyboardType="numeric"
                                         placeholder="0"
                                         maxLength={3}
-                                        className="bg-slate-800 h-24 w-40 text-center text-5xl font-black text-primary rounded-3xl border border-white/5"
+                                        className="bg-bg-soft h-24 w-40 text-center text-5xl font-black text-primary rounded-3xl border border-border-light"
                                     />
-                                    <Text className="text-white text-5xl font-black ml-4">%</Text>
+                                    <Text className="text-secondary text-5xl font-black ml-4">%</Text>
                                 </View>
-                                <Text className="text-slate-600 text-[10px] font-bold italic">Entrez une valeur entre 0 et 100</Text>
+                                <Text className="text-secondary/40 text-[10px] font-bold italic">Entrez une valeur entre 0 et 100</Text>
                             </View>
 
                             <TouchableOpacity

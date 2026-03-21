@@ -148,7 +148,12 @@ export default function DailyLogFormScreen() {
                 <Text className="text-secondary text-2xl font-black tracking-tight">{isEdit ? 'Modifier' : 'Nouveau'} Journal</Text>
             </View>
 
-            <ScrollView className="flex-1 px-6 pt-8" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 60 }}>
+            <ScrollView 
+                className="flex-1 px-6 pt-8" 
+                showsVerticalScrollIndicator={false} 
+                contentContainerStyle={{ paddingBottom: 60 }}
+                keyboardShouldPersistTaps="handled"
+            >
                 <Animated.View entering={FadeInUp.duration(600)}>
                     <Text className="text-[10px] font-black text-secondary mb-3 ml-1 uppercase tracking-[3px]">Projet</Text>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-6">

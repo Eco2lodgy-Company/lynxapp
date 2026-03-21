@@ -24,7 +24,6 @@ export default function SupplyRequestScreen() {
     useEffect(() => {
         const fetchProjects = async () => {
             try {
-                // Fetch projects donde le chef est affecté
                 const response = await api.get('/projects');
                 setProjects(response.data);
             } catch (error) {
@@ -48,7 +47,7 @@ export default function SupplyRequestScreen() {
                 projectId: selectedProject,
                 item,
                 quantity,
-                plannedDate: new Date().toISOString(), // Immediate signal
+                plannedDate: new Date().toISOString(),
                 notes: notes ? `SIGNALEMENT RUPTURE : ${notes}` : "SIGNALEMENT RUPTURE DE STOCK"
             });
             Alert.alert("Succès", "Rupture de stock signalée au conducteur.");
@@ -61,9 +60,9 @@ export default function SupplyRequestScreen() {
     };
 
     return (
-        <View className="flex-1 bg-slate-950">
+        <View className="flex-1 bg-white">
             <LinearGradient
-                colors={['#1e293b', '#0f172a', '#020617']}
+                colors={['#FFFFFF', '#FDFCFB', '#F8F9FA']}
                 style={StyleSheet.absoluteFill}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
@@ -72,30 +71,30 @@ export default function SupplyRequestScreen() {
             <View className="px-5 mb-10 flex-row items-center" style={{ paddingTop: Math.max(insets.top, 24) }}>
                 <TouchableOpacity 
                     onPress={() => router.back()} 
-                    className="w-12 h-12 bg-slate-900 rounded-2xl items-center justify-center border border-white/5 mr-5"
+                    className="w-12 h-12 bg-bg-soft rounded-2xl items-center justify-center border border-border-light mr-5"
                 >
-                    <ChevronLeft size={24} color="#C8842A" />
+                    <ChevronLeft size={24} color="#4A3520" />
                 </TouchableOpacity>
                 <View>
-                    <Text className="text-slate-500 text-[10px] font-black uppercase tracking-[4px] mb-1">Ressources & Matériaux</Text>
-                    <Text className="text-white text-3xl font-black tracking-tight">Approvisionnement</Text>
+                    <Text className="text-secondary/50 text-[10px] font-black uppercase tracking-[4px] mb-1">Ressources & Matériaux</Text>
+                    <Text className="text-secondary text-3xl font-black tracking-tight">Approvisionnement</Text>
                 </View>
             </View>
 
             <ScrollView className="flex-1 px-5" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
                 <PremiumCard index={0} glass={true} style={{ padding: 25, marginBottom: 20 }}>
                     <View className="flex-row items-center mb-10">
-                        <View className="w-12 h-12 bg-orange-500/10 rounded-2xl items-center justify-center mr-4 border border-orange-500/20">
-                            <AlertTriangle color="#F59E0B" size={24} />
+                        <View className="w-12 h-12 bg-primary/10 rounded-2xl items-center justify-center mr-4 border border-primary/20">
+                            <AlertTriangle color="#E67E22" size={24} />
                         </View>
                         <View>
-                            <Text className="text-white text-xl font-black tracking-tight">Signaler Rupture</Text>
-                            <Text className="text-slate-500 text-[10px] font-black uppercase tracking-widest mt-0.5">Alerte stock critique</Text>
+                            <Text className="text-secondary text-xl font-black tracking-tight">Signaler Rupture</Text>
+                            <Text className="text-secondary/50 text-[10px] font-black uppercase tracking-widest mt-0.5">Alerte stock critique</Text>
                         </View>
                     </View>
 
                     <View className="mb-10">
-                        <Text className="text-slate-500 text-[10px] font-black uppercase tracking-[2px] mb-4 ml-1">Chantier Concerné</Text>
+                        <Text className="text-secondary/50 text-[10px] font-black uppercase tracking-[2px] mb-4 ml-1">Chantier Concerné</Text>
                         {fetching ? (
                             <ActivityIndicator color="#C8842A" />
                         ) : (
@@ -104,9 +103,9 @@ export default function SupplyRequestScreen() {
                                     <TouchableOpacity 
                                         key={p.id}
                                         onPress={() => setSelectedProject(p.id)}
-                                        className={`mr-3 mb-3 px-5 py-3 rounded-2xl border-2 ${selectedProject === p.id ? 'bg-primary/10 border-primary' : 'bg-slate-950/50 border-white/5'}`}
+                                        className={`mr-3 mb-3 px-5 py-3 rounded-2xl border-2 ${selectedProject === p.id ? 'bg-primary/10 border-primary' : 'bg-bg-soft border-border-light'}`}
                                     >
-                                        <Text className={`font-bold text-sm ${selectedProject === p.id ? 'text-primary' : 'text-slate-500'}`}>
+                                        <Text className={`font-bold text-sm ${selectedProject === p.id ? 'text-primary' : 'text-secondary/60'}`}>
                                             {p.name}
                                         </Text>
                                     </TouchableOpacity>
@@ -133,11 +132,11 @@ export default function SupplyRequestScreen() {
                         />
 
                         <View className="mb-10">
-                            <Text className="text-slate-500 text-[10px] font-black uppercase tracking-[2px] mb-3 ml-1">Commentaires (Optionnel)</Text>
+                            <Text className="text-secondary/50 text-[10px] font-black uppercase tracking-[2px] mb-3 ml-1">Commentaires (Optionnel)</Text>
                             <TextInput 
-                                className="bg-slate-950/50 border border-white/5 rounded-[24px] p-5 text-white text-base font-medium min-h-[140px]"
+                                className="bg-bg-soft border border-border-light rounded-[24px] p-5 text-secondary text-base font-medium min-h-[140px]"
                                 placeholder="Détails sur l'urgence ou spécifications..."
-                                placeholderTextColor="#334155"
+                                placeholderTextColor="#A08060"
                                 multiline
                                 textAlignVertical="top"
                                 value={notes}
@@ -155,12 +154,12 @@ export default function SupplyRequestScreen() {
                     </Button>
                 </PremiumCard>
 
-                <Animated.View entering={FadeInDown.delay(300)} className="bg-orange-500/5 p-6 rounded-[30px] border border-orange-500/10 flex-row items-center">
-                    <View className="w-10 h-10 bg-orange-500/10 rounded-xl items-center justify-center mr-4 border border-orange-500/20">
-                        <Info size={18} color="#F59E0B" strokeWidth={2.5} />
+                <Animated.View entering={FadeInDown.delay(300)} className="bg-primary/5 p-6 rounded-[30px] border border-primary/10 flex-row items-center">
+                    <View className="w-10 h-10 bg-primary/10 rounded-xl items-center justify-center mr-4 border border-primary/20">
+                        <Info size={18} color="#E67E22" strokeWidth={2.5} />
                     </View>
-                    <Text className="flex-1 text-orange-400 text-[11px] font-medium leading-5">
-                        Ce signalement sera immédiatement ajouté au <Text className="font-black">Planning Logistique</Text> du conducteur pour action.
+                    <Text className="flex-1 text-secondary/60 text-[11px] font-medium leading-5">
+                        Ce signalement sera immédiatement ajouté au <Text className="font-black text-primary">Planning Logistique</Text> du conducteur pour action.
                     </Text>
                 </Animated.View>
             </ScrollView>

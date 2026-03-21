@@ -120,7 +120,11 @@ export default function TaskFormScreen() {
                 <Text className="text-secondary text-2xl font-black tracking-tight">{isEdit ? 'Modifier' : 'Nouvelle'} Tâche</Text>
             </View>
 
-            <ScrollView className="flex-1 px-6 pt-8" showsVerticalScrollIndicator={false}>
+            <ScrollView 
+                className="flex-1 px-6 pt-8" 
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+            >
                 <Animated.View entering={FadeInUp.duration(600)}>
                     <Input label="Titre de la tâche" value={form.title} onChangeText={(t) => setForm(f => ({ ...f, title: t }))} placeholder="Monter les échafaudages" icon={<CheckSquare size={18} color="#A08060" />} />
                     <Input label="Description" value={form.description} onChangeText={(t) => setForm(f => ({ ...f, description: t }))} placeholder="Détails de l'intervention..." multiline numberOfLines={3} />

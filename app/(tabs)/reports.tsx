@@ -248,12 +248,12 @@ export default function ReportsScreen() {
                 <PremiumCard index={index} glass={true} style={{ padding: 18, marginBottom: 16 }}>
                     <View className="flex-row justify-between items-start mb-4">
                         <View className="flex-1">
-                            <Text className="text-white font-black text-lg tracking-tight mb-1.5" numberOfLines={1}>
+                            <Text className="text-secondary font-black text-lg tracking-tight mb-1.5" numberOfLines={1}>
                                 {log.project?.name}
                             </Text>
-                            <View className="flex-row items-center bg-white/5 self-start px-2.5 py-1 rounded-lg border border-white/5">
-                                <Calendar size={12} color="#94A3B8" strokeWidth={2.5} />
-                                <Text className="text-slate-400 text-[10px] font-black uppercase tracking-widest ml-2">
+                            <View className="flex-row items-center bg-bg-soft self-start px-2.5 py-1 rounded-lg border border-border-light">
+                                <Calendar size={12} color="#A08060" strokeWidth={2.5} />
+                                <Text className="text-secondary/50 text-[10px] font-black uppercase tracking-widest ml-2">
                                     {new Date(log.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
                                 </Text>
                             </View>
@@ -266,22 +266,22 @@ export default function ReportsScreen() {
                     </View>
 
                     {log.summary && (
-                        <Text className="text-slate-400 text-sm leading-5 mb-4" numberOfLines={2}>{log.summary}</Text>
+                        <Text className="text-secondary/60 text-sm leading-5 mb-4" numberOfLines={2}>{log.summary}</Text>
                     )}
 
-                    <View className="flex-row items-center justify-between pt-4 border-t border-white/5">
+                    <View className="flex-row items-center justify-between pt-4 border-t border-secondary/5">
                         <View className="flex-row items-center">
                             <View className="flex-row items-center mr-5">
                                 <CloudRain size={14} color="#C8842A" strokeWidth={2} />
-                                <Text className="text-slate-200 text-[11px] font-bold ml-2 uppercase tracking-tighter">{log.weather || '—'}</Text>
+                                <Text className="text-secondary/80 text-[11px] font-bold ml-2 uppercase tracking-tighter">{log.weather || '—'}</Text>
                             </View>
                             <View className="flex-row items-center">
                                 <Thermometer size={14} color="#C8842A" strokeWidth={2} />
-                                <Text className="text-slate-200 text-[11px] font-bold ml-1 uppercase">{log.temperature ? `${log.temperature}°C` : '—'}</Text>
+                                <Text className="text-secondary/80 text-[11px] font-bold ml-1 uppercase">{log.temperature ? `${log.temperature}°C` : '—'}</Text>
                             </View>
                         </View>
-                        <View className="bg-white/5 px-2.5 py-1 rounded-lg border border-white/5">
-                            <Text className="text-slate-500 text-[9px] font-black uppercase tracking-widest">{log.author?.firstName}</Text>
+                        <View className="bg-bg-soft px-2.5 py-1 rounded-lg border border-border-light">
+                            <Text className="text-secondary/50 text-[9px] font-black uppercase tracking-widest">{log.author?.firstName}</Text>
                         </View>
                     </View>
                 </PremiumCard>
@@ -290,9 +290,9 @@ export default function ReportsScreen() {
     };
 
     return (
-        <View className="flex-1 bg-slate-950">
+        <View className="flex-1 bg-white">
             <LinearGradient
-                colors={['#1e293b', '#0f172a', '#020617']}
+                colors={['#FFFFFF', '#FDFCFB', '#F8F9FA']}
                 style={StyleSheet.absoluteFill}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
@@ -303,8 +303,8 @@ export default function ReportsScreen() {
                 style={{ paddingTop: Math.max(insets.top, 24) }}
             >
                 <Animated.View entering={FadeInUp.duration(600)} className="mb-8">
-                    <Text className="text-slate-500 text-sm font-bold uppercase tracking-[4px] mb-2">Historique</Text>
-                    <Text className="text-white text-4xl font-black tracking-tighter">Journaux</Text>
+                    <Text className="text-secondary/50 text-sm font-bold uppercase tracking-[4px] mb-2">Historique</Text>
+                    <Text className="text-secondary text-4xl font-black tracking-tighter">Journaux</Text>
                 </Animated.View>
 
                 <Animated.View entering={FadeInUp.delay(200)} className="mb-8">
@@ -331,13 +331,14 @@ export default function ReportsScreen() {
                         showsVerticalScrollIndicator={false}
                         contentContainerStyle={{ paddingBottom: 100 }}
                         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#C8842A" />}
+                        keyboardShouldPersistTaps="handled"
                     >
                         {filteredLogs.length > 0 ? (
                             filteredLogs.map((log, index) => <LogCard key={log.id} log={log} index={index} />)
                         ) : (
                             <View className="items-center justify-center py-24">
-                                <FileText size={48} color="#1e293b" strokeWidth={1} />
-                                <Text className="text-slate-500 text-base font-medium mt-4 italic">Aucun document archivé</Text>
+                                <FileText size={48} color="#E0E0E0" strokeWidth={1} />
+                            <Text className="text-secondary/50 text-base font-medium mt-4 italic">Aucun document archivé</Text>
                             </View>
                         )}
                     </ScrollView>
@@ -349,6 +350,7 @@ export default function ReportsScreen() {
                 <TouchableOpacity
                     onPress={() => setCreateModal(true)}
                     activeOpacity={0.8}
+                    hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
                     className="absolute bottom-6 right-6 w-16 h-16 bg-primary rounded-full items-center justify-center shadow-lg shadow-primary/30 z-30"
                 >
                     <Plus color="white" size={32} />
@@ -362,30 +364,30 @@ export default function ReportsScreen() {
                 presentationStyle="pageSheet"
                 onRequestClose={() => setCreateModal(false)}
             >
-                <View className="flex-1 bg-slate-950">
+                <View className="flex-1 bg-white">
                     <LinearGradient
-                        colors={['#1e293b', '#0f172a']}
+                        colors={['#FDFCFB', '#F8F9FA']}
                         style={StyleSheet.absoluteFill}
                     />
                     
-                    <View className="flex-row items-center justify-between p-6 border-b border-white/10" style={{ paddingTop: Platform.OS === 'ios' ? 20 : 40 }}>
-                        <Text className="text-white text-xl font-bold tracking-tight">Rédiger un Rapport</Text>
-                        <TouchableOpacity onPress={() => setCreateModal(false)} className="w-10 h-10 bg-white/5 rounded-full items-center justify-center border border-white/10">
-                            <X size={20} color="#94A3B8" />
+                    <View className="flex-row items-center justify-between p-6 border-b border-secondary/10" style={{ paddingTop: Platform.OS === 'ios' ? 20 : 40 }}>
+                        <Text className="text-secondary text-xl font-bold tracking-tight">Rédiger un Rapport</Text>
+                        <TouchableOpacity onPress={() => setCreateModal(false)} className="w-10 h-10 bg-bg-soft rounded-full items-center justify-center border border-border-light">
+                            <X size={20} color="#A08060" />
                         </TouchableOpacity>
                     </View>
 
                     <ScrollView className="flex-1 p-6" contentContainerStyle={{ paddingBottom: 100 }}>
-                        <Text className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-2 ml-1">Projet</Text>
-                        <View className="bg-white/5 border border-white/10 rounded-2xl mb-6 overflow-hidden">
+                        <Text className="text-secondary/60 text-xs font-bold uppercase tracking-widest mb-2 ml-1">Projet</Text>
+                        <View className="bg-bg-soft border border-border-light rounded-2xl mb-6 overflow-hidden">
                             <ScrollView horizontal showsHorizontalScrollIndicator={false} className="py-2 px-2">
                                 {projects.map((proj) => (
                                     <TouchableOpacity 
                                         key={proj.id}
                                         onPress={() => setNewReport({...newReport, projectId: proj.id})}
-                                        className={`px-4 py-3 rounded-xl mr-2 border ${newReport.projectId === proj.id ? 'bg-primary border-primary' : 'bg-transparent border-white/5'}`}
+                                        className={`px-4 py-3 rounded-xl mr-2 border ${newReport.projectId === proj.id ? 'bg-primary border-primary' : 'bg-transparent border-border-light'}`}
                                     >
-                                        <Text className={`font-bold ${newReport.projectId === proj.id ? 'text-white' : 'text-slate-400'}`}>
+                                        <Text className={`font-bold ${newReport.projectId === proj.id ? 'text-white' : 'text-secondary/60'}`}>
                                             {proj.name}
                                         </Text>
                                     </TouchableOpacity>
@@ -395,100 +397,100 @@ export default function ReportsScreen() {
 
                         <View className="flex-row gap-4 mb-6">
                             <View className="flex-1">
-                                <Text className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-2 ml-1">Météo</Text>
-                                <View className="bg-white/5 border border-white/10 rounded-2xl h-14 justify-center px-4">
+                                <Text className="text-secondary/60 text-xs font-bold uppercase tracking-widest mb-2 ml-1">Météo</Text>
+                                <View className="bg-bg-soft border border-border-light rounded-2xl h-14 justify-center px-4">
                                     <TextInput
                                         value={newReport.weather}
                                         onChangeText={(v) => setNewReport({...newReport, weather: v})}
                                         placeholder="Ex: Ensoleillé"
-                                        placeholderTextColor="#475569"
-                                        className="text-white font-medium"
+                                        placeholderTextColor="#A08060"
+                                        className="text-secondary font-medium"
                                     />
                                 </View>
                             </View>
                             <View className="flex-1">
-                                <Text className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-2 ml-1">Température (°C)</Text>
-                                <View className="bg-white/5 border border-white/10 rounded-2xl h-14 justify-center px-4">
+                                <Text className="text-secondary/60 text-xs font-bold uppercase tracking-widest mb-2 ml-1">Température (°C)</Text>
+                                <View className="bg-bg-soft border border-border-light rounded-2xl h-14 justify-center px-4">
                                     <TextInput
                                         value={newReport.temperature}
                                         onChangeText={(v) => setNewReport({...newReport, temperature: v})}
                                         placeholder="Ex: 24"
                                         keyboardType="numeric"
-                                        placeholderTextColor="#475569"
-                                        className="text-white font-medium"
+                                        placeholderTextColor="#A08060"
+                                        className="text-secondary font-medium"
                                     />
                                 </View>
                             </View>
                         </View>
 
-                        <Text className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-2 ml-1">Résumé de la journée *</Text>
-                        <View className="bg-white/5 border border-white/10 rounded-2xl mb-6 min-h-[120px] p-4">
+                        <Text className="text-secondary/60 text-xs font-bold uppercase tracking-widest mb-2 ml-1">Résumé de la journée *</Text>
+                        <View className="bg-bg-soft border border-border-light rounded-2xl mb-6 min-h-[120px] p-4">
                             <TextInput
                                 value={newReport.summary}
                                 onChangeText={(v) => setNewReport({...newReport, summary: v})}
                                 placeholder="Que s'est-il passé aujourd'hui ?"
-                                placeholderTextColor="#475569"
-                                className="text-white font-medium leading-6"
+                                placeholderTextColor="#A08060"
+                                className="text-secondary font-medium leading-6"
                                 multiline
                                 textAlignVertical="top"
                             />
                         </View>
 
-                        <Text className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-2 ml-1">Travaux Réalisés</Text>
-                        <View className="bg-white/5 border border-white/10 rounded-2xl mb-6 min-h-[100px] p-4">
+                        <Text className="text-secondary/60 text-xs font-bold uppercase tracking-widest mb-2 ml-1">Travaux Réalisés</Text>
+                        <View className="bg-bg-soft border border-border-light rounded-2xl mb-6 min-h-[100px] p-4">
                             <TextInput
                                 value={newReport.workCompleted}
                                 onChangeText={(v) => setNewReport({...newReport, workCompleted: v})}
                                 placeholder="Détail des avancées..."
-                                placeholderTextColor="#475569"
-                                className="text-white font-medium leading-6"
+                                placeholderTextColor="#A08060"
+                                className="text-secondary font-medium leading-6"
                                 multiline
                                 textAlignVertical="top"
                             />
                         </View>
 
-                        <Text className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-2 ml-1">Problèmes Rencontrés</Text>
-                        <View className="bg-white/5 border border-white/10 rounded-2xl mb-6 min-h-[100px] p-4">
+                        <Text className="text-secondary/60 text-xs font-bold uppercase tracking-widest mb-2 ml-1">Problèmes Rencontrés</Text>
+                        <View className="bg-bg-soft border border-border-light rounded-2xl mb-6 min-h-[100px] p-4">
                             <TextInput
                                 value={newReport.issues}
                                 onChangeText={(v) => setNewReport({...newReport, issues: v})}
                                 placeholder="Difficultés, retards..."
-                                placeholderTextColor="#475569"
-                                className="text-white font-medium leading-6"
+                                placeholderTextColor="#A08060"
+                                className="text-secondary font-medium leading-6"
                                 multiline
                                 textAlignVertical="top"
                             />
                         </View>
 
-                        <Text className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-2 ml-1">Matériaux Utilisés</Text>
-                        <View className="bg-white/5 border border-white/10 rounded-2xl mb-6 min-h-[100px] p-4">
+                        <Text className="text-secondary/60 text-xs font-bold uppercase tracking-widest mb-2 ml-1">Matériaux Utilisés</Text>
+                        <View className="bg-bg-soft border border-border-light rounded-2xl mb-6 min-h-[100px] p-4">
                             <TextInput
                                 value={newReport.materialsUsed}
                                 onChangeText={(v) => setNewReport({...newReport, materialsUsed: v})}
                                 placeholder="Quantités et types de matériaux..."
-                                placeholderTextColor="#475569"
-                                className="text-white font-medium leading-6"
+                                placeholderTextColor="#A08060"
+                                className="text-secondary font-medium leading-6"
                                 multiline
                                 textAlignVertical="top"
                             />
                         </View>
 
-                        <Text className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-2 ml-1">Photos</Text>
+                        <Text className="text-secondary/60 text-xs font-bold uppercase tracking-widest mb-2 ml-1">Photos</Text>
                         <View className="mb-6">
                             <View className="flex-row gap-4 mb-4">
                                 <TouchableOpacity 
                                     onPress={takePhoto}
-                                    className="flex-1 bg-white/5 border border-white/10 rounded-2xl h-14 flex-row items-center justify-center"
+                                    className="flex-1 bg-bg-soft border border-border-light rounded-2xl h-14 flex-row items-center justify-center"
                                 >
                                     <Camera size={20} color="#C8842A" />
-                                    <Text className="text-slate-300 font-bold ml-2">Caméra</Text>
+                                    <Text className="text-secondary/60 font-bold ml-2">Caméra</Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity 
                                     onPress={pickImage}
-                                    className="flex-1 bg-white/5 border border-white/10 rounded-2xl h-14 flex-row items-center justify-center"
+                                    className="flex-1 bg-bg-soft border border-border-light rounded-2xl h-14 flex-row items-center justify-center"
                                 >
                                     <ImageIcon size={20} color="#C8842A" />
-                                    <Text className="text-slate-300 font-bold ml-2">Galerie</Text>
+                                    <Text className="text-secondary/60 font-bold ml-2">Galerie</Text>
                                 </TouchableOpacity>
                             </View>
 
@@ -502,7 +504,7 @@ export default function ReportsScreen() {
                                             />
                                             <TouchableOpacity 
                                                 onPress={() => removeSelectedPhoto(index)}
-                                                className="absolute -top-2 -right-2 bg-red-500 rounded-full p-1 border-2 border-slate-900 shadow-lg"
+                                                className="absolute -top-2 -right-2 bg-red-500 rounded-full p-1 border-2 border-white shadow-lg"
                                             >
                                                 <Trash2 size={12} color="white" />
                                             </TouchableOpacity>
@@ -514,15 +516,15 @@ export default function ReportsScreen() {
 
                     </ScrollView>
 
-                    <View className="p-6 border-t border-white/10 bg-slate-900 flex-row gap-4 mb-4">
+                    <View className="p-6 border-t border-secondary/10 bg-white flex-row gap-4 mb-4">
                         <TouchableOpacity
                             onPress={() => handleCreateReport('BROUILLON')}
                             disabled={actionLoading}
                             activeOpacity={0.8}
-                            className="flex-1 h-14 bg-white/5 border border-white/10 rounded-xl items-center justify-center flex-row"
+                            className="flex-1 h-14 bg-bg-soft border border-border-light rounded-xl items-center justify-center flex-row"
                         >
-                            <Save size={18} color="#94A3B8" className="mr-2" />
-                            <Text className="text-slate-300 font-bold uppercase text-xs tracking-wider">Brouillon</Text>
+                            <Save size={18} color="#A08060" className="mr-2" />
+                            <Text className="text-secondary/60 font-bold uppercase text-xs tracking-wider">Brouillon</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             onPress={() => handleCreateReport('SOUMIS')}
@@ -669,30 +671,29 @@ export default function ReportsScreen() {
 
             {/* Reject Modal */}
             {rejectModal.visible && (
-                <View className="absolute inset-0 bg-black/80 justify-center items-center px-6 z-50">
+                <View className="absolute inset-0 bg-black/50 justify-center items-center px-6 z-50">
                     <Animated.View 
                         entering={FadeInUp} 
-                        className="bg-slate-950 rounded-t-[40px] p-8 border-t border-white/10"
-                        style={{ paddingBottom: Math.max(insets.bottom, 20) }}
+                        className="bg-white rounded-[40px] p-8 border border-border-light w-full shadow-2xl"
                     >
                         <View className="flex-row justify-between items-center mb-6">
                             <View>
-                                <Text className="text-white text-2xl font-black tracking-tight">Contre-visite</Text>
+                                <Text className="text-secondary text-2xl font-black tracking-tight">Contre-visite</Text>
                                 <Text className="text-red-500 text-[10px] font-black uppercase tracking-widest mt-1">Éléments non conformes</Text>
                             </View>
                             <TouchableOpacity 
                                 onPress={() => setRejectModal({ visible: false, logId: null })}
-                                className="w-10 h-10 bg-white/5 rounded-full items-center justify-center border border-white/5"
+                                className="w-10 h-10 bg-bg-soft rounded-full items-center justify-center border border-border-light"
                             >
-                                <X size={20} color="#64748B" />
+                                <X size={20} color="#A08060" />
                             </TouchableOpacity>
                         </View>
                         
-                        <View className="bg-white/5 border border-white/5 rounded-[28px] p-5 mb-8 min-h-[160px]">
+                        <View className="bg-bg-soft border border-border-light rounded-[28px] p-5 mb-8 min-h-[160px]">
                             <TextInput
-                                className="text-white text-[15px] font-medium leading-6"
+                                className="text-secondary text-[15px] font-medium leading-6"
                                 placeholder="Détaillez les correctifs nécessaires..."
-                                placeholderTextColor="#334155"
+                                placeholderTextColor="#A08060"
                                 multiline
                                 textAlignVertical="top"
                                 value={counterNotes}

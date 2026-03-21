@@ -124,19 +124,19 @@ export default function TasksScreen() {
             <PremiumCard index={index} glass={true} style={{ padding: 18, marginBottom: 16 }}>
                 <View className="flex-row justify-between items-start mb-4">
                     <View className="flex-1 mr-4">
-                        <Text className={`font-black text-lg tracking-tight mb-1.5 ${isCompleted ? 'text-slate-600 line-through opacity-50' : 'text-white'}`}>
+                        <Text className={`font-black text-lg tracking-tight mb-1.5 ${isCompleted ? 'text-secondary/40 line-through' : 'text-secondary'}`}>
                             {task.title}
                         </Text>
                         <View className="flex-row items-center">
                             <Target size={12} color="#C8842A" strokeWidth={3} />
-                            <Text className="text-slate-400 text-[10px] font-black uppercase tracking-widest ml-2">{task.project?.name || 'Projet Général'}</Text>
+                            <Text className="text-secondary/50 text-[10px] font-black uppercase tracking-widest ml-2">{task.project?.name || 'Projet Général'}</Text>
                         </View>
                     </View>
                     
                     {canManageTasks && (
                         <TouchableOpacity 
                             onPress={() => handleActionPress(task)} 
-                            className="w-12 h-12 bg-white/5 rounded-2xl items-center justify-center border border-white/10"
+                            className="w-12 h-12 bg-bg-soft rounded-2xl items-center justify-center border border-border-light"
                             activeOpacity={0.7}
                         >
                             <MoreVertical size={20} color="#C8842A" />
@@ -145,7 +145,7 @@ export default function TasksScreen() {
                 </View>
 
                 {task.description && (
-                    <Text className={`text-sm leading-6 mb-6 font-medium ${isCompleted ? 'text-slate-700' : 'text-slate-400'}`} numberOfLines={3}>
+                    <Text className={`text-sm leading-6 mb-6 font-medium ${isCompleted ? 'text-secondary/30' : 'text-secondary/60'}`} numberOfLines={3}>
                         {task.description}
                     </Text>
                 )}
@@ -153,10 +153,10 @@ export default function TasksScreen() {
                 {/* Progress Bar */}
                 <View className="mb-6">
                     <View className="flex-row justify-between items-end mb-2">
-                        <Text className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Progression</Text>
-                        <Text className={`text-[12px] font-black ${isCompleted ? 'text-emerald-500' : 'text-white'}`}>{Math.round(progress)}%</Text>
+                        <Text className="text-secondary/50 text-[10px] font-black uppercase tracking-widest">Progression</Text>
+                        <Text className={`text-[12px] font-black ${isCompleted ? 'text-emerald-500' : 'text-secondary'}`}>{Math.round(progress)}%</Text>
                     </View>
-                    <View className="h-2 bg-white/5 rounded-full overflow-hidden border border-white/5">
+                    <View className="h-2 bg-bg-soft rounded-full overflow-hidden border border-border-light">
                         <Animated.View 
                             entering={FadeIn.delay(400)}
                             className={`h-full rounded-full ${isCompleted ? 'bg-emerald-500' : 'bg-primary'}`} 
@@ -165,8 +165,8 @@ export default function TasksScreen() {
                     </View>
                 </View>
 
-                <View className="flex-row items-center justify-between pt-5 border-t border-white/5">
-                    <View style={{ backgroundColor: statusInfo.bg }} className="px-3 py-1.5 rounded-xl flex-row items-center border border-white/5">
+                <View className="flex-row items-center justify-between pt-5 border-t border-secondary/5">
+                    <View style={{ backgroundColor: statusInfo.bg }} className="px-3 py-1.5 rounded-xl flex-row items-center border border-secondary/5">
                         {statusInfo.icon}
                         <Text style={{ color: statusInfo.color }} className="text-[10px] ml-2 font-black uppercase tracking-widest">
                             {statusInfo.label}
@@ -174,9 +174,9 @@ export default function TasksScreen() {
                     </View>
                     
                     {task.dueDate && (
-                        <View className="flex-row items-center bg-white/5 px-3 py-1.5 rounded-xl border border-white/5">
-                            <Calendar size={12} color={isCompleted ? '#334155' : '#94A3B8'} />
-                            <Text className={`text-[10px] ml-2 font-black uppercase tracking-widest ${isCompleted ? 'text-slate-700' : 'text-slate-400'}`}>
+                        <View className="flex-row items-center bg-bg-soft px-3 py-1.5 rounded-xl border border-border-light">
+                            <Calendar size={12} color={isCompleted ? '#9CA3AF' : '#A08060'} />
+                            <Text className={`text-[10px] ml-2 font-black uppercase tracking-widest ${isCompleted ? 'text-secondary/30' : 'text-secondary/50'}`}>
                                 {new Date(task.dueDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
                             </Text>
                         </View>
@@ -187,17 +187,17 @@ export default function TasksScreen() {
     };
 
     return (
-        <View className="flex-1 bg-slate-950">
+        <View className="flex-1 bg-white">
             <LinearGradient
-                colors={['#1e293b', '#0f172a', '#020617']}
+                colors={['#FFFFFF', '#FDFCFB', '#F8F9FA']}
                 style={StyleSheet.absoluteFill}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
             />
             
             <View className="px-6 mb-8" style={{ paddingTop: Math.max(insets.top, 24) }}>
-                <Text className="text-slate-500 text-[11px] font-black uppercase tracking-[5px] mb-2 opacity-60">Operations</Text>
-                <Text className="text-white text-4xl font-black tracking-tight">Missions</Text>
+                <Text className="text-secondary/50 text-[11px] font-black uppercase tracking-[5px] mb-2">Operations</Text>
+                <Text className="text-secondary text-4xl font-black tracking-tight">Missions</Text>
             </View>
 
             {loading ? (
@@ -220,11 +220,11 @@ export default function TasksScreen() {
                     >
                         {tasks.length === 0 ? (
                             <Animated.View entering={FadeIn.delay(300)} className="items-center justify-center py-32">
-                                <View className="w-28 h-28 bg-white/5 rounded-[40px] items-center justify-center mb-8 border border-white/10">
-                                    <CheckSquare size={48} color="#1e293b" strokeWidth={1} />
+                                <View className="w-28 h-28 bg-bg-soft rounded-[40px] items-center justify-center mb-8 border border-border-light">
+                                    <CheckSquare size={48} color="#E0E0E0" strokeWidth={1} />
                                 </View>
-                                <Text className="text-white font-black text-2xl mb-3">Table rase</Text>
-                                <Text className="text-slate-500 text-center text-sm font-medium px-10 leading-6">
+                                <Text className="text-secondary font-black text-2xl mb-3">Table rase</Text>
+                                <Text className="text-secondary/50 text-center text-sm font-medium px-10 leading-6">
                                     Aucune mission ne vous est assignée pour le moment.
                                 </Text>
                             </Animated.View>
@@ -242,49 +242,48 @@ export default function TasksScreen() {
                         animationType="slide"
                         onRequestClose={() => setProgressModal({ visible: false, task: null })}
                     >
-                        <View className="flex-1 bg-black/80 justify-center items-center px-6">
+                        <View className="flex-1 bg-black/50 justify-center items-center px-6">
                             <TouchableOpacity 
                                 className="absolute inset-0"
                                 onPress={() => setProgressModal({ visible: false, task: null })}
                             />
                             <Animated.View 
                                 entering={SlideInUp}
-                                className="bg-slate-900 rounded-t-[40px] p-8 border-t border-white/10 shadow-2xl"
-                                style={{ paddingBottom: Math.max(insets.bottom, 40) }}
+                                className="bg-white rounded-[40px] p-8 w-full shadow-2xl"
                             >
-                                <View className="w-12 h-1.5 bg-white/10 rounded-full self-center mb-8" />
+                                <View className="w-12 h-1.5 bg-secondary/10 rounded-full self-center mb-8" />
                                 
                                 <View className="flex-row justify-between items-start mb-10">
                                     <View className="flex-1 mr-4">
                                         <Text className="text-primary text-[10px] font-black uppercase tracking-widest mb-1.5">Mise à jour</Text>
-                                        <Text className="text-white text-2xl font-black tracking-tight" numberOfLines={2}>
+                                        <Text className="text-secondary text-2xl font-black tracking-tight" numberOfLines={2}>
                                             {progressModal.task?.title}
                                         </Text>
                                     </View>
                                     <TouchableOpacity 
                                         onPress={() => setProgressModal({ visible: false, task: null })}
-                                        className="w-10 h-10 bg-white/5 rounded-full items-center justify-center border border-white/5"
+                                        className="w-10 h-10 bg-bg-soft rounded-full items-center justify-center border border-border-light"
                                     >
-                                        <X size={20} color="#64748B" />
+                                        <X size={20} color="#A08060" />
                                     </TouchableOpacity>
                                 </View>
 
                                 <View className="mb-10">
                                     <View className="flex-row justify-between items-center mb-4">
-                                        <Text className="text-slate-500 text-xs font-black uppercase tracking-widest">Avancement (%)</Text>
+                                        <Text className="text-secondary/50 text-xs font-black uppercase tracking-widest">Avancement (%)</Text>
                                         <Text className="text-primary text-2xl font-black">{newProgress}%</Text>
                                     </View>
                                     
-                                    <View className="bg-white/5 rounded-3xl border border-white/5 p-6 flex-row items-center justify-between">
+                                    <View className="bg-bg-soft rounded-3xl border border-border-light p-6 flex-row items-center justify-between">
                                         <TouchableOpacity 
                                             onPress={() => setNewProgress(Math.max(0, parseInt(newProgress) - 10).toString())}
-                                            className="w-14 h-14 bg-white/5 rounded-2xl items-center justify-center border border-white/5"
+                                            className="w-14 h-14 bg-white rounded-2xl items-center justify-center border border-border-light"
                                         >
-                                            <Text className="text-white text-2xl font-bold">-10</Text>
+                                            <Text className="text-secondary text-2xl font-bold">-10</Text>
                                         </TouchableOpacity>
                                         
                                         <TextInput
-                                            className="text-white text-5xl font-black text-center flex-1"
+                                            className="text-secondary text-5xl font-black text-center flex-1"
                                             keyboardType="numeric"
                                             value={newProgress}
                                             onChangeText={setNewProgress}
@@ -294,9 +293,9 @@ export default function TasksScreen() {
 
                                         <TouchableOpacity 
                                             onPress={() => setNewProgress(Math.min(100, parseInt(newProgress || '0') + 10).toString())}
-                                            className="w-14 h-14 bg-white/5 rounded-2xl items-center justify-center border border-white/5"
+                                            className="w-14 h-14 bg-white rounded-2xl items-center justify-center border border-border-light"
                                         >
-                                            <Text className="text-white text-2xl font-bold">+10</Text>
+                                            <Text className="text-secondary text-2xl font-bold">+10</Text>
                                         </TouchableOpacity>
                                     </View>
                                 </View>

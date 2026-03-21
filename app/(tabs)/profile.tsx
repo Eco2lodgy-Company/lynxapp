@@ -145,6 +145,7 @@ export default function ProfileScreen() {
             
             <ScrollView 
                 className="flex-1" 
+                keyboardShouldPersistTaps="handled"
                 contentContainerStyle={{ 
                     padding: 24, 
                     paddingTop: Math.max(insets.top, 24),

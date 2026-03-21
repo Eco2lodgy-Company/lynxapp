@@ -124,7 +124,11 @@ export default function UserFormScreen() {
                 </Text>
             </View>
 
-            <ScrollView className="flex-1 px-6 pt-8" showsVerticalScrollIndicator={false}>
+            <ScrollView 
+                className="flex-1 px-6 pt-8" 
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+            >
                 <Animated.View entering={FadeInUp.duration(600)}>
                     <View className="flex-row space-x-4">
                         <View className="flex-1">

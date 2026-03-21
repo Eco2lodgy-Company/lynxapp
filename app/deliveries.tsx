@@ -184,7 +184,7 @@ export default function DeliveriesScreen() {
                         </View>
                         <View className="flex-1">
                             <View className="flex-row items-center">
-                                <Text className={`font-black text-xl tracking-tight mb-1 ${isDelivered ? 'text-slate-500 line-through' : 'text-white'}`}>{delivery.item}</Text>
+                                <Text className={`font-black text-xl tracking-tight mb-1 ${isDelivered ? 'text-secondary/40 line-through' : 'text-secondary'}`}>{delivery.item}</Text>
                                 {isUrgent && (
                                     <View className="bg-red-500/10 px-2 py-0.5 rounded-lg border border-red-500/20 ml-3">
                                         <Text className="text-red-500 text-[8px] font-black uppercase tracking-widest">Urgent</Text>
@@ -192,32 +192,32 @@ export default function DeliveriesScreen() {
                                 )}
                             </View>
                             <View className="flex-row items-center">
-                                <Text className="text-slate-500 text-[10px] font-black uppercase tracking-widest">{delivery.supplier || 'Logistique Interne'}</Text>
+                                <Text className="text-secondary/50 text-[10px] font-black uppercase tracking-widest">{delivery.supplier || 'Logistique Interne'}</Text>
                             </View>
                         </View>
                     </View>
-                    <View className="bg-slate-950/50 px-3 py-1.5 rounded-xl border border-white/5">
+                    <View className="bg-bg-soft px-3 py-1.5 rounded-xl border border-border-light">
                         <Text className="text-primary text-[10px] font-black tracking-widest uppercase">
                             {delivery.quantity || 'Quantité non spécifiée'}
                         </Text>
                     </View>
                 </View>
             
-            <View className="flex-row items-center mb-5 bg-slate-900/40 self-start px-3 py-2 rounded-xl border border-white/5">
+            <View className="flex-row items-center mb-5 bg-bg-soft self-start px-3 py-2 rounded-xl border border-border-light">
                 <Calendar size={14} color={statusColor} />
-                <Text className="text-slate-300 text-[11px] font-black uppercase tracking-wider ml-2">
+                <Text className="text-secondary/60 text-[11px] font-black uppercase tracking-wider ml-2">
                     {new Date(delivery.plannedDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
                 </Text>
             </View>
 
             {delivery.notes && (
-                <View className="bg-slate-950/30 p-4 rounded-2xl border border-white/5 mb-5">
-                    <Text className="text-slate-500 text-xs font-medium leading-5">"{delivery.notes}"</Text>
+                <View className="bg-bg-soft p-4 rounded-2xl border border-border-light mb-5">
+                    <Text className="text-secondary/50 text-xs font-medium leading-5">"{delivery.notes}"</Text>
                 </View>
             )}
 
-            <View className="pt-5 border-t border-white/5 flex-row justify-between items-center">
-                <View className="flex-row items-center bg-slate-950/40 px-3 py-1.5 rounded-lg border border-white/5">
+            <View className="pt-5 border-t border-secondary/5 flex-row justify-between items-center">
+                <View className="flex-row items-center bg-bg-soft px-3 py-1.5 rounded-lg border border-border-light">
                     <Box size={12} color="#C8842A" />
                     <Text className="text-primary text-[9px] font-black uppercase tracking-[2px] ml-2">
                         {delivery.project?.name}
@@ -228,9 +228,9 @@ export default function DeliveriesScreen() {
                     <View className="flex-row items-center">
                         <TouchableOpacity 
                             onPress={() => openEditModal(delivery)}
-                            className="w-10 h-10 bg-slate-800 rounded-xl items-center justify-center border border-white/10 mr-2"
+                            className="w-10 h-10 bg-bg-soft rounded-xl items-center justify-center border border-border-light mr-2"
                         >
-                            <Edit2 size={16} color="#94A3B8" />
+                            <Edit2 size={16} color="#A08060" />
                         </TouchableOpacity>
                         
                         <TouchableOpacity 
@@ -258,9 +258,9 @@ export default function DeliveriesScreen() {
     );};
 
     return (
-        <View className="flex-1 bg-slate-950">
+        <View className="flex-1 bg-white">
             <LinearGradient
-                colors={['#1e293b', '#0f172a', '#020617']}
+                colors={['#FFFFFF', '#FDFCFB', '#F8F9FA']}
                 style={StyleSheet.absoluteFill}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
@@ -269,13 +269,13 @@ export default function DeliveriesScreen() {
             <View className="px-5 mb-10 flex-row items-center" style={{ paddingTop: Math.max(insets.top, 24) }}>
                 <TouchableOpacity 
                     onPress={() => router.back()} 
-                    className="w-12 h-12 bg-slate-900 rounded-2xl items-center justify-center border border-white/5 mr-5"
+                    className="w-12 h-12 bg-bg-soft rounded-2xl items-center justify-center border border-border-light mr-5"
                 >
-                    <ChevronLeft size={24} color="#C8842A" />
+                    <ChevronLeft size={24} color="#4A3520" />
                 </TouchableOpacity>
                 <View>
-                    <Text className="text-slate-500 text-[10px] font-black uppercase tracking-[4px] mb-1">Chaîne Logistique</Text>
-                    <Text className="text-white text-3xl font-black tracking-tight">Livraisons</Text>
+                    <Text className="text-secondary/50 text-[10px] font-black uppercase tracking-[4px] mb-1">Chaîne Logistique</Text>
+                    <Text className="text-secondary text-3xl font-black tracking-tight">Livraisons</Text>
                 </View>
             </View>
 
@@ -303,11 +303,11 @@ export default function DeliveriesScreen() {
                         ))
                     ) : (
                         <Animated.View entering={FadeIn.delay(300)} className="items-center justify-center py-24">
-                            <View className="w-24 h-24 bg-slate-900 rounded-[35px] items-center justify-center mb-8 border border-white/5">
-                                <Truck size={48} color="#1e293b" strokeWidth={1.5} />
+                            <View className="w-24 h-24 bg-bg-soft rounded-[35px] items-center justify-center mb-8 border border-border-light">
+                                <Truck size={48} color="#E0E0E0" strokeWidth={1.5} />
                             </View>
-                            <Text className="text-white font-black text-xl mb-3 uppercase tracking-tighter">Entrepôt Vide</Text>
-                            <Text className="text-slate-500 text-center px-10 text-sm font-medium leading-5">
+                            <Text className="text-secondary font-black text-xl mb-3 uppercase tracking-tighter">Entrepôt Vide</Text>
+                            <Text className="text-secondary/50 text-center px-10 text-sm font-medium leading-5">
                                 Toutes les livraisons sont à jour. Aucun mouvement prévu pour le moment.
                             </Text>
                         </Animated.View>

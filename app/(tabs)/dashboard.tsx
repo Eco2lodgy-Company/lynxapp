@@ -165,6 +165,7 @@ export default function DashboardScreen() {
                     paddingBottom: Math.max(insets.bottom, 100)
                 }}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#E67E22" />}
+                keyboardShouldPersistTaps="handled"
             >
                 <Animated.View entering={FadeInDown.duration(800)} className="mb-8">
                     <Text className="text-secondary/40 text-xs font-bold uppercase tracking-[4px] mb-2">Pilotage Elite — LYNX</Text>
@@ -238,23 +239,29 @@ export default function DashboardScreen() {
                     <View className="mt-4 mb-4">
                         <Text className="text-secondary text-xl font-black mb-6 tracking-tight">Santé des Chantiers</Text>
                         {stats.projectHealth.map((p: any, idx: number) => (
-                            <PremiumCard key={idx} index={idx + 4} style={{ padding: 16, marginBottom: 12 }} glass={true}>
-                                <View className="flex-row justify-between items-center mb-3">
-                                    <View className="flex-1">
-                                        <Text className="text-secondary font-black text-base">{p.id.substring(0, 15)}...</Text>
-                                        <View className="flex-row items-center mt-1">
-                                            <View className={`w-2 h-2 rounded-full mr-2 ${p.incidents > 0 ? 'bg-red-500' : 'bg-green-500'}`} />
-                                            <Text className="text-secondary/50 text-[10px] uppercase font-black tracking-widest">
-                                                {p.incidents} Incidents • {p.tasks} Missions
-                                            </Text>
+                            <TouchableOpacity 
+                                key={idx} 
+                                activeOpacity={0.8}
+                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                            >
+                                <PremiumCard index={idx + 4} style={{ padding: 16, marginBottom: 12 }} glass={true}>
+                                    <View className="flex-row justify-between items-center mb-3">
+                                        <View className="flex-1">
+                                            <Text className="text-secondary font-black text-base">{p.name || p.id.substring(0, 15)}</Text>
+                                            <View className="flex-row items-center mt-1">
+                                                <View className={`w-2 h-2 rounded-full mr-2 ${p.incidents > 0 ? 'bg-red-500' : 'bg-green-500'}`} />
+                                                <Text className="text-secondary/50 text-[10px] uppercase font-black tracking-widest">
+                                                    {p.incidents} Incidents • {p.tasks} Missions
+                                                </Text>
+                                            </View>
                                         </View>
+                                        <Text className="text-secondary text-xl font-black">{Math.round(p.progress)}%</Text>
                                     </View>
-                                    <Text className="text-secondary text-xl font-black">{Math.round(p.progress)}%</Text>
-                                </View>
-                                <View className="h-1.5 bg-secondary/5 rounded-full overflow-hidden">
-                                    <View className="h-full bg-primary rounded-full" style={{ width: `${p.progress}%` }} />
-                                </View>
-                            </PremiumCard>
+                                    <View className="h-1.5 bg-secondary/5 rounded-full overflow-hidden">
+                                        <View className="h-full bg-primary rounded-full" style={{ width: `${p.progress}%` }} />
+                                    </View>
+                                </PremiumCard>
+                            </TouchableOpacity>
                         ))}
                     </View>
                 )}
@@ -268,6 +275,7 @@ export default function DashboardScreen() {
                                 key={index}
                                 onPress={action.onPress}
                                 activeOpacity={0.7}
+                                hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
                                 className="w-[48%] mb-4"
                             >
                                 <PremiumCard

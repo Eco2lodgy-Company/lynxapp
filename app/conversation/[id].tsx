@@ -304,6 +304,7 @@ export default function ConversationScreen() {
                     className="flex-1"
                     contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 24, paddingBottom: 24 }}
                     showsVerticalScrollIndicator={false}
+                    keyboardShouldPersistTaps="handled"
                 >
                     {groupedMessages.length === 0 ? (
                         <View className="flex-1 items-center justify-center py-24 opacity-20">
@@ -470,6 +471,7 @@ export default function ConversationScreen() {
                 <View className="px-5 py-6 flex-row items-center">
                     <TouchableOpacity
                         onPress={handleAttachPhoto}
+                        hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                         className="w-14 h-14 rounded-2xl bg-bg-soft items-center justify-center border border-border-light mr-4 shadow-sm"
                     >
                         <Paperclip size={24} color="#E67E22" strokeWidth={2.5} />
@@ -490,6 +492,7 @@ export default function ConversationScreen() {
                     <TouchableOpacity
                         onPress={sendMessage}
                         disabled={sending || (!text.trim() && attachments.length === 0 && !linkedIncident)}
+                        hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
                         className={`w-14 h-14 rounded-2xl items-center justify-center ml-4 shadow-2xl ${(text.trim() || attachments.length > 0 || linkedIncident) ? 'bg-primary shadow-primary/40' : 'bg-bg-soft border border-border-light'}`}
                     >
                         {sending ? (
