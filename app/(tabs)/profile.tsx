@@ -50,13 +50,17 @@ export default function ProfileScreen() {
     const handleUploadAvatar = async (uri: string) => {
         setUploading(true);
         try {
+            const filename = uri.split('/').pop() || `avatar_${Date.now()}.jpg`;
+            const match = /\.(\w+)$/.exec(filename);
+            const type = match ? `image/${match[1]}` : `image/jpeg`;
+
             const formData = new FormData();
             
             // @ts-ignore
             formData.append('file', {
                 uri,
-                type: 'image/jpeg',
-                name: `avatar_${Date.now()}.jpg`
+                type,
+                name: filename
             });
 
             const uploadRes = await api.post('/upload', formData, {

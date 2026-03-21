@@ -108,11 +108,15 @@ export default function IncidentsScreen() {
             // 1. Upload photos first
             const uploadedUrls = [];
             for (const photo of selectedPhotos) {
+                const filename = photo.uri.split('/').pop() || `incident_${Date.now()}.jpg`;
+                const match = /\.(\w+)$/.exec(filename);
+                const type = match ? `image/${match[1]}` : `image/jpeg`;
+
                 const formData = new FormData();
                 formData.append('file', {
                     uri: photo.uri,
-                    type: 'image/jpeg',
-                    name: `incident_${Date.now()}.jpg`
+                    type,
+                    name: filename
                 } as any);
 
                 const uploadRes = await api.post('/upload', formData, {
