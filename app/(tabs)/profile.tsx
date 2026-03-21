@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, StyleSheet, Platform, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Image, StyleSheet, Platform, Alert, ActivityIndicator, Modal, KeyboardAvoidingView } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { 
     User, 
@@ -276,83 +276,85 @@ export default function ProfileScreen() {
             </ScrollView>
 
             {/* Password Change Modal */}
-            {passwordModalVisible && (
-                <Animated.View entering={FadeIn} className="absolute inset-0 bg-black/60 justify-center items-center z-50 px-5">
-                    <Animated.View 
-                        entering={FadeInUp} 
-                        className="bg-white rounded-[40px] p-8 w-full shadow-2xl"
-                    >
-                        <View className="flex-row items-center justify-between mb-8">
-                            <View>
-                                <Text className="text-secondary text-2xl font-black mb-1">Sécurité</Text>
-                                <Text className="text-secondary/50 text-[10px] font-bold uppercase tracking-widest">CHANGER LE MOT DE PASSE</Text>
-                            </View>
-                            <TouchableOpacity 
-                                onPress={() => setPasswordModalVisible(false)} 
-                                className="w-12 h-12 bg-slate-800 rounded-full items-center justify-center border border-white/10"
-                            >
-                                <X size={24} color="white" />
-                            </TouchableOpacity>
-                        </View>
-                        
-                        <View className="bg-bg-soft border border-border-light rounded-2xl mb-6 overflow-hidden h-14">
-                            <Input
-                                placeholder="Mot de passe actuel"
-                                value={currentPassword}
-                                onChangeText={setCurrentPassword}
-                                secureTextEntry
-                                inputClassName="bg-transparent border-0"
-                                placeholderTextColor="#A08060"
-                            />
-                        </View>
-
-                        <View className="bg-bg-soft border border-border-light rounded-2xl mb-6 overflow-hidden h-14">
-                            <Input
-                                placeholder="Nouveau mot de passe"
-                                value={newPassword}
-                                onChangeText={setNewPassword}
-                                secureTextEntry
-                                inputClassName="bg-transparent border-0"
-                                placeholderTextColor="#A08060"
-                            />
-                        </View>
-
-                        <View className="bg-bg-soft border border-border-light rounded-2xl mb-8 overflow-hidden h-14">
-                            <Input
-                                placeholder="Confirmer le nouveau mot de passe"
-                                value={confirmPassword}
-                                onChangeText={setConfirmPassword}
-                                secureTextEntry
-                                inputClassName="bg-transparent border-0"
-                                placeholderTextColor="#A08060"
-                            />
-                        </View>
-
-                        <TouchableOpacity
-                            onPress={handleUpdatePassword}
-                            disabled={saving}
-                            activeOpacity={0.8}
-                            className="overflow-hidden rounded-2xl"
+            <Modal visible={passwordModalVisible} transparent animationType="fade" onRequestClose={() => setPasswordModalVisible(false)}>
+                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1">
+                    <View className="flex-1 bg-black/60 justify-center items-center px-4">
+                        <Animated.View 
+                            entering={FadeInUp.springify()} 
+                            className="bg-white rounded-[40px] p-8 w-full shadow-2xl"
                         >
-                            <LinearGradient
-                                colors={['#E67E22', '#D35400']}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 1 }}
-                                style={{ height: 72, alignItems: 'center', justifyContent: 'center' }}
+                            <View className="flex-row items-center justify-between mb-8">
+                                <View>
+                                    <Text className="text-secondary text-2xl font-black mb-1">Sécurité</Text>
+                                    <Text className="text-secondary/50 text-[10px] font-bold uppercase tracking-widest">CHANGER LE MOT DE PASSE</Text>
+                                </View>
+                                <TouchableOpacity 
+                                    onPress={() => setPasswordModalVisible(false)} 
+                                    className="w-12 h-12 bg-bg-soft rounded-full items-center justify-center border border-border-light shadow-sm"
+                                >
+                                    <X size={20} color="#4A3520" strokeWidth={2.5} />
+                                </TouchableOpacity>
+                            </View>
+                            
+                            <View className="bg-bg-soft border border-border-light rounded-2xl mb-5 overflow-hidden h-14">
+                                <Input
+                                    placeholder="Mot de passe actuel"
+                                    value={currentPassword}
+                                    onChangeText={setCurrentPassword}
+                                    secureTextEntry
+                                    inputClassName="bg-transparent border-0"
+                                    placeholderTextColor="#A08060"
+                                />
+                            </View>
+
+                            <View className="bg-bg-soft border border-border-light rounded-2xl mb-5 overflow-hidden h-14">
+                                <Input
+                                    placeholder="Nouveau mot de passe"
+                                    value={newPassword}
+                                    onChangeText={setNewPassword}
+                                    secureTextEntry
+                                    inputClassName="bg-transparent border-0"
+                                    placeholderTextColor="#A08060"
+                                />
+                            </View>
+
+                            <View className="bg-bg-soft border border-border-light rounded-2xl mb-8 overflow-hidden h-14">
+                                <Input
+                                    placeholder="Confirmer le nouveau mot de passe"
+                                    value={confirmPassword}
+                                    onChangeText={setConfirmPassword}
+                                    secureTextEntry
+                                    inputClassName="bg-transparent border-0"
+                                    placeholderTextColor="#A08060"
+                                />
+                            </View>
+
+                            <TouchableOpacity
+                                onPress={handleUpdatePassword}
+                                disabled={saving}
+                                activeOpacity={0.8}
+                                className="overflow-hidden rounded-2xl"
                             >
-                                {saving ? (
-                                    <ActivityIndicator color="white" />
-                                ) : (
-                                    <View className="flex-row items-center">
-                                        <CheckCircle color="white" size={24} strokeWidth={3} className="mr-3" />
-                                        <Text className="text-white font-black text-lg uppercase tracking-wider ml-1">Mettre à jour</Text>
-                                    </View>
-                                )}
-                            </LinearGradient>
-                        </TouchableOpacity>
-                    </Animated.View>
-                </Animated.View>
-            )}
+                                <LinearGradient
+                                    colors={['#E67E22', '#D35400']}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 1 }}
+                                    style={{ height: 60, alignItems: 'center', justifyContent: 'center' }}
+                                >
+                                    {saving ? (
+                                        <ActivityIndicator color="white" />
+                                    ) : (
+                                        <View className="flex-row items-center">
+                                            <CheckCircle color="white" size={20} strokeWidth={3} className="mr-2" />
+                                            <Text className="text-white font-black text-sm uppercase tracking-wider">Mettre à jour</Text>
+                                        </View>
+                                    )}
+                                </LinearGradient>
+                            </TouchableOpacity>
+                        </Animated.View>
+                    </View>
+                </KeyboardAvoidingView>
+            </Modal>
         </View>
     );
 }
