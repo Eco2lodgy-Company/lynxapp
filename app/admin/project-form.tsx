@@ -139,7 +139,7 @@ export default function ProjectFormScreen() {
                     <Input label="Budget (€)" value={form.budget} onChangeText={(t) => setForm(f => ({ ...f, budget: t }))} placeholder="500 000 €" keyboardType="numeric" icon={<Euro size={18} color="#A08060" />} />
 
                     <Text className="text-[10px] font-black text-secondary mb-3 ml-1 uppercase tracking-[3px]">Superviseur</Text>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-6">
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" className="mb-6">
                         <View className="flex-row">
                             {supervisors.map(s => (
                                 <TouchableOpacity key={s.id} onPress={() => setForm(f => ({ ...f, supervisorId: s.id }))} className={`px-4 py-3 rounded-xl mr-2 border ${form.supervisorId === s.id ? 'bg-secondary border-secondary' : 'bg-bg-soft border-border-light'}`}>
@@ -150,7 +150,7 @@ export default function ProjectFormScreen() {
                     </ScrollView>
 
                     <Text className="text-[10px] font-black text-secondary mb-3 ml-1 uppercase tracking-[3px]">Client</Text>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-6">
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" className="mb-6">
                         <View className="flex-row">
                             <TouchableOpacity onPress={() => setForm(f => ({ ...f, clientId: '' }))} className={`px-4 py-3 rounded-xl mr-2 border ${form.clientId === '' ? 'bg-secondary border-secondary' : 'bg-bg-soft border-border-light'}`}>
                                 <Text className={`text-[10px] font-black uppercase ${form.clientId === '' ? 'text-white' : 'text-secondary/60'}`}>Aucun</Text>
