@@ -142,8 +142,8 @@ export default function DeliveriesScreen() {
                         try {
                             await api.delete(`/deliveries/${id}`);
                             fetchDeliveries();
-                        } catch (error) {
-                            Alert.alert("Erreur", "Impossible de supprimer la livraison.");
+                        } catch (error: any) {
+                            Alert.alert("Erreur", error.response?.data?.error || error.message || "Impossible de supprimer la livraison.");
                         }
                     }
                 }
@@ -156,8 +156,8 @@ export default function DeliveriesScreen() {
             await api.put(`/deliveries/${id}`, { status: "LIVRÉ" });
             fetchDeliveries();
             Alert.alert("Succès", "Livraison marquée comme réceptionnée.");
-        } catch (error) {
-            Alert.alert("Erreur", "Impossible de mettre à jour le statut.");
+        } catch (error: any) {
+            Alert.alert("Erreur", error.response?.data?.error || error.message || "Impossible de mettre à jour le statut.");
         }
     };
 
@@ -225,28 +225,30 @@ export default function DeliveriesScreen() {
                 </View>
 
                 {!isDelivered ? (
-                    <View className="flex-row items-center">
-                        <TouchableOpacity 
-                            onPress={() => openEditModal(delivery)}
-                            className="w-10 h-10 bg-bg-soft rounded-xl items-center justify-center border border-border-light mr-2"
-                        >
-                            <Edit2 size={16} color="#A08060" />
-                        </TouchableOpacity>
-                        
-                        <TouchableOpacity 
-                            onPress={() => handleDeleteDelivery(delivery.id)}
-                            className="w-10 h-10 bg-red-500/10 rounded-xl items-center justify-center border border-red-500/20 mr-2"
-                        >
-                            <Trash2 size={16} color="#EF4444" />
-                        </TouchableOpacity>
+                    (user?.role === 'ADMIN' || user?.role === 'CONDUCTEUR' || user?.role === 'CHEF_EQUIPE') ? (
+                        <View className="flex-row items-center">
+                            <TouchableOpacity 
+                                onPress={() => openEditModal(delivery)}
+                                className="w-10 h-10 bg-bg-soft rounded-xl items-center justify-center border border-border-light mr-2"
+                            >
+                                <Edit2 size={16} color="#A08060" />
+                            </TouchableOpacity>
+                            
+                            <TouchableOpacity 
+                                onPress={() => handleDeleteDelivery(delivery.id)}
+                                className="w-10 h-10 bg-red-500/10 rounded-xl items-center justify-center border border-red-500/20 mr-2"
+                            >
+                                <Trash2 size={16} color="#EF4444" />
+                            </TouchableOpacity>
 
-                        <TouchableOpacity 
-                            onPress={() => handleReceiveDelivery(delivery.id)}
-                            className="bg-emerald-500/10 border border-emerald-500/30 px-5 py-2.5 rounded-xl shadow-lg shadow-emerald-500/10"
-                        >
-                            <Text className="text-emerald-500 text-[10px] font-black uppercase tracking-widest">Réceptionner</Text>
-                        </TouchableOpacity>
-                    </View>
+                            <TouchableOpacity 
+                                onPress={() => handleReceiveDelivery(delivery.id)}
+                                className="bg-emerald-500/10 border border-emerald-500/30 px-5 py-2.5 rounded-xl shadow-lg shadow-emerald-500/10"
+                            >
+                                <Text className="text-emerald-500 text-[10px] font-black uppercase tracking-widest">Réceptionner</Text>
+                            </TouchableOpacity>
+                        </View>
+                    ) : null
                 ) : (
                     <View className="flex-row items-center bg-emerald-500/10 px-4 py-2 rounded-xl border border-emerald-500/20">
                         <CheckCircle size={14} color="#10B981" />
