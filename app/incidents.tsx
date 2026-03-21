@@ -369,7 +369,11 @@ export default function IncidentsScreen() {
                                 </TouchableOpacity>
                             </View>
 
-                            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 60 }}>
+                            <ScrollView 
+                                showsVerticalScrollIndicator={false} 
+                                contentContainerStyle={{ paddingBottom: 60 }}
+                                keyboardShouldPersistTaps="handled"
+                            >
                                 <View className="mb-8">
                                     <Text className="text-secondary/50 text-[10px] font-black uppercase tracking-[2px] mb-4 ml-1">Projet de Référence</Text>
                                     <View className="flex-row flex-wrap">

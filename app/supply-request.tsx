@@ -81,7 +81,12 @@ export default function SupplyRequestScreen() {
                 </View>
             </View>
 
-            <ScrollView className="flex-1 px-5" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
+            <ScrollView 
+                className="flex-1 px-5" 
+                showsVerticalScrollIndicator={false} 
+                contentContainerStyle={{ paddingBottom: 120 }}
+                keyboardShouldPersistTaps="handled"
+            >
                 <PremiumCard index={0} glass={true} style={{ padding: 25, marginBottom: 20 }}>
                     <View className="flex-row items-center mb-10">
                         <View className="w-12 h-12 bg-primary/10 rounded-2xl items-center justify-center mr-4 border border-primary/20">
