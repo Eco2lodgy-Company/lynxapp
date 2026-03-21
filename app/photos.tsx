@@ -11,6 +11,13 @@ import Animated, { FadeIn, FadeInDown, ZoomIn } from 'react-native-reanimated';
 const { width } = Dimensions.get('window');
 const COLUMN_WIDTH = (width - 60) / 2;
 
+const getPhotoUrl = (url?: string) => {
+    if (!url) return '';
+    if (url.startsWith('http')) return url;
+    if (url.startsWith('/')) return `${ASSET_BASE_URL}${url}`;
+    return `${ASSET_BASE_URL}/${url}`;
+};
+
 export default function PhotoGalleryScreen() {
     const router = useRouter();
     const insets = useSafeAreaInsets();
@@ -63,7 +70,7 @@ export default function PhotoGalleryScreen() {
                 {selectedPhoto && (
                     <Animated.View entering={ZoomIn.duration(400)} className="w-full aspect-square">
                         <Image 
-                            source={{ uri: `${ASSET_BASE_URL}${selectedPhoto.url}` }}
+                            source={{ uri: getPhotoUrl(selectedPhoto.url) }}
                             className="w-full h-full"
                             resizeMode="contain"
                         />
@@ -146,7 +153,7 @@ export default function PhotoGalleryScreen() {
                                     style={{ height: COLUMN_WIDTH }}
                                 >
                                     <Image 
-                                        source={{ uri: `${ASSET_BASE_URL}${photo.url}` }}
+                                        source={{ uri: getPhotoUrl(photo.url) }}
                                         style={{ width: '100%', height: '100%' }}
                                         resizeMode="cover"
                                     />

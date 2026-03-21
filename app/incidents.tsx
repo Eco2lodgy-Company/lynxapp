@@ -14,6 +14,13 @@ import * as ImagePicker from 'expo-image-picker';
 
 const { width } = Dimensions.get('window');
 
+const getPhotoUrl = (url?: string | null) => {
+    if (!url) return '';
+    if (url.startsWith('http')) return url;
+    if (url.startsWith('/')) return `${ASSET_BASE_URL}${url}`;
+    return `${ASSET_BASE_URL}/${url}`;
+};
+
 export default function IncidentsScreen() {
     const [refreshing, setRefreshing] = useState(false);
     const [incidents, setIncidents] = useState<any[]>([]);
@@ -220,7 +227,7 @@ export default function IncidentsScreen() {
                                 onPress={() => setSelectedPhotoViewer(p.url)}
                             >
                                 <Image 
-                                    source={{ uri: `${ASSET_BASE_URL}${p.url}` }}
+                                    source={{ uri: getPhotoUrl(p.url) }}
                                     style={{ width: 80, height: 80 }}
                                     resizeMode="cover"
                                 />
@@ -271,7 +278,7 @@ export default function IncidentsScreen() {
                 >
                     <Animated.View entering={FadeInUp.springify()} className="w-11/12 max-h-[80%] bg-white rounded-[32px] overflow-hidden">
                         <Image 
-                            source={{ uri: `${ASSET_BASE_URL}${selectedPhotoViewer}` }}
+                            source={{ uri: getPhotoUrl(selectedPhotoViewer) }}
                             className="w-full h-[400px]"
                             resizeMode="contain"
                         />
