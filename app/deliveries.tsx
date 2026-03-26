@@ -11,11 +11,25 @@ import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import Animated, { FadeInDown, FadeIn, FadeInUp, SlideInUp } from 'react-native-reanimated';
 import { BlurView } from 'expo-blur';
+import { Delivery, Project } from '@lynx/types';
+import { 
+    useDeliveries, 
+    useCreateDelivery, 
+    useUpdateDelivery, 
+    useDeleteDelivery, 
+    useUpdateDeliveryStatus,
+    useProjects
+} from '@lynx/api-client';
 
 export default function DeliveriesScreen() {
+    const { data: deliveries = [], isLoading: loading, refetch: refetchDeliveries } = useDeliveries();
+    const { data: projects = [] } = useProjects();
+    const { mutate: createDelivery, isPending: creating } = useCreateDelivery();
+    const { mutate: updateDelivery, isPending: updating } = useUpdateDelivery();
+    const { mutate: deleteDelivery } = useDeleteDelivery();
+    const { mutate: updateStatus } = useUpdateDeliveryStatus();
+
     const [refreshing, setRefreshing] = useState(false);
-    const [deliveries, setDeliveries] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
     const { user } = useAuth();
     const router = useRouter();
     const insets = useSafeAreaInsets();
@@ -26,45 +40,18 @@ export default function DeliveriesScreen() {
     const [currentDeliveryId, setCurrentDeliveryId] = useState<string | null>(null);
     
     // Form states
-    const [projects, setProjects] = useState<any[]>([]);
     const [selectedProject, setSelectedProject] = useState("");
     const [item, setItem] = useState("");
     const [quantity, setQuantity] = useState("");
     const [supplier, setSupplier] = useState("");
     const [plannedDate, setPlannedDate] = useState(new Date().toISOString().split('T')[0]);
     const [notes, setNotes] = useState("");
-    const [saving, setSaving] = useState(false);
-
-    const fetchDeliveries = async () => {
-        try {
-            const response = await api.get('/deliveries');
-            setDeliveries(response.data);
-        } catch (error) {
-            console.error("Error fetching deliveries:", error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const fetchProjects = async () => {
-        try {
-            const response = await api.get('/projects');
-            setProjects(response.data);
-        } catch (error) {
-            console.error("Error fetching projects:", error);
-        }
-    };
-
-    useEffect(() => {
-        fetchDeliveries();
-        fetchProjects();
-    }, []);
 
     const onRefresh = React.useCallback(async () => {
         setRefreshing(true);
-        await fetchDeliveries();
+        await refetchDeliveries();
         setRefreshing(false);
-    }, []);
+    }, [refetchDeliveries]);
 
     const resetForm = () => {
         setItem("");
@@ -82,7 +69,7 @@ export default function DeliveriesScreen() {
         setModalVisible(true);
     };
 
-    const openEditModal = (delivery: any) => {
+    const openEditModal = (delivery: Delivery) => {
         setItem(delivery.item || "");
         setQuantity(delivery.quantity || "");
         setSupplier(delivery.supplier || "");
@@ -100,32 +87,37 @@ export default function DeliveriesScreen() {
             return;
         }
 
-        setSaving(true);
-        try {
-            const payload = {
-                projectId: selectedProject,
-                item,
-                quantity,
-                supplier,
-                plannedDate,
-                notes
-            };
+        const payload = {
+            projectId: selectedProject,
+            item,
+            quantity,
+            supplier,
+            plannedDate,
+            notes
+        };
 
-            if (isEditing && currentDeliveryId) {
-                await api.put(`/deliveries/${currentDeliveryId}`, payload);
-                Alert.alert("Succès", "Livraison mise à jour.");
-            } else {
-                await api.post('/deliveries', payload);
-                Alert.alert("Succès", "Mouvement logistique planifié.");
-            }
-            
-            setModalVisible(false);
-            fetchDeliveries();
-            resetForm();
-        } catch (error: any) {
-            Alert.alert("Erreur", error.response?.data?.error || "Erreur lors de l'enregistrement");
-        } finally {
-            setSaving(false);
+        if (isEditing && currentDeliveryId) {
+            updateDelivery({ id: currentDeliveryId, ...payload }, {
+                onSuccess: () => {
+                    Alert.alert("Succès", "Livraison mise à jour.");
+                    setModalVisible(false);
+                    resetForm();
+                },
+                onError: (error: any) => {
+                    Alert.alert("Erreur", error.response?.data?.error || "Erreur lors de la mise à jour");
+                }
+            });
+        } else {
+            createDelivery(payload, {
+                onSuccess: () => {
+                    Alert.alert("Succès", "Mouvement logistique planifié.");
+                    setModalVisible(false);
+                    resetForm();
+                },
+                onError: (error: any) => {
+                    Alert.alert("Erreur", error.response?.data?.error || "Erreur lors de l'enregistrement");
+                }
+            });
         }
     };
 
@@ -138,13 +130,12 @@ export default function DeliveriesScreen() {
                 { 
                     text: "Supprimer", 
                     style: "destructive",
-                    onPress: async () => {
-                        try {
-                            await api.delete(`/deliveries/${id}`);
-                            fetchDeliveries();
-                        } catch (error: any) {
-                            Alert.alert("Erreur", error.response?.data?.error || error.message || "Impossible de supprimer la livraison.");
-                        }
+                    onPress: () => {
+                        deleteDelivery(id, {
+                            onError: (error: any) => {
+                                Alert.alert("Erreur", error.response?.data?.error || error.message || "Impossible de supprimer la livraison.");
+                            }
+                        });
                     }
                 }
             ]
@@ -152,13 +143,14 @@ export default function DeliveriesScreen() {
     };
 
     const handleReceiveDelivery = async (id: string) => {
-        try {
-            await api.put(`/deliveries/${id}`, { status: "LIVRÉ" });
-            fetchDeliveries();
-            Alert.alert("Succès", "Livraison marquée comme réceptionnée.");
-        } catch (error: any) {
-            Alert.alert("Erreur", error.response?.data?.error || error.message || "Impossible de mettre à jour le statut.");
-        }
+        updateStatus({ id, status: "LIVRÉ" }, {
+            onSuccess: () => {
+                Alert.alert("Succès", "Livraison marquée comme réceptionnée.");
+            },
+            onError: (error: any) => {
+                Alert.alert("Erreur", error.response?.data?.error || error.message || "Impossible de mettre à jour le statut.");
+            }
+        });
     };
 
     const getStatusColor = (status: string) => {
@@ -170,7 +162,7 @@ export default function DeliveriesScreen() {
         }
     };
 
-    const DeliveryCard = ({ delivery, index }: { delivery: any, index: number }) => {
+    const DeliveryCard = ({ delivery, index }: { delivery: Delivery, index: number }) => {
         const isUrgent = delivery.status === "URGENT";
         const isDelivered = delivery.status === "LIVRÉ";
         const statusColor = getStatusColor(delivery.status);
@@ -417,9 +409,9 @@ export default function DeliveriesScreen() {
                                     onPress={handleSaveDelivery} 
                                     variant="primary" 
                                     className="w-full h-20 rounded-[28px]"
-                                    disabled={saving || !item.trim()}
+                                    disabled={creating || updating || !item.trim()}
                                 >
-                                    {saving ? <ActivityIndicator color="#020617" /> : (isEditing ? "Confirmer les modifications" : "Planifier la livraison")}
+                                    {(creating || updating) ? <ActivityIndicator color="#020617" /> : (isEditing ? "Confirmer les modifications" : "Planifier la livraison")}
                                 </Button>
                                 
                                 {isEditing && (

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ChevronLeft, Check, User, Mail, Lock, Phone, Shield, Briefcase } from 'lucide-react-native';
@@ -11,6 +11,7 @@ import Animated, { FadeInUp } from 'react-native-reanimated';
 
 export default function UserFormScreen() {
     const router = useRouter();
+    const navigation = useNavigation();
     const insets = useSafeAreaInsets();
     const { id } = useLocalSearchParams();
     const isEdit = !!id;
@@ -79,7 +80,7 @@ export default function UserFormScreen() {
             }
             
             Alert.alert('Succès', `Utilisateur ${isEdit ? 'mis à jour' : 'créé'} avec succès`);
-            router.back();
+            navigation.goBack();
         } catch (error: any) {
             console.error('Error saving user:', error);
             const msg = error.response?.data?.error || 'Une erreur est survenue';
@@ -114,7 +115,7 @@ export default function UserFormScreen() {
                 style={{ paddingTop: Math.max(insets.top, 24) }}
             >
                 <TouchableOpacity 
-                    onPress={() => router.back()} 
+                    onPress={() => navigation.goBack()} 
                     className="mr-5 bg-bg-soft w-12 h-12 rounded-2xl items-center justify-center border border-border-light"
                 >
                     <ChevronLeft size={24} color="#4A3520" strokeWidth={3} />

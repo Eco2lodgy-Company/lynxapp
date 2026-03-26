@@ -10,48 +10,32 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { PremiumCard } from '../components/ui/PremiumCard';
 import Animated, { FadeInDown, FadeInUp, FadeIn } from 'react-native-reanimated';
 import * as Location from 'expo-location';
+import { Attendance, Project } from '@lynx/types';
+import { useAttendance, useCheckIn, useCheckOut, useValidateAttendance, useProjects } from '@lynx/api-client';
 
 export default function AttendanceScreen() {
     const { user } = useAuth();
     const router = useRouter();
     const params = useLocalSearchParams();
     const insets = useSafeAreaInsets();
+    
+    const { data: teamAttendance = [], isLoading: fetchingTeam, refetch } = useAttendance();
+    const { data: projects = [] } = useProjects();
+    const checkInMutation = useCheckIn();
+    const checkOutMutation = useCheckOut();
+    const validateMutation = useValidateAttendance();
+
     const [loading, setLoading] = useState(false);
-    const [fetchingTeam, setFetchingTeam] = useState(true);
-    const [teamAttendance, setTeamAttendance] = useState<any[]>([]);
-    const [todayRecord, setTodayRecord] = useState<any>(null);
-    const [projects, setProjects] = useState<any[]>([]);
     const [selectedProjectId, setSelectedProjectId] = useState<string | null>((params.projectId as string) || null);
     const [showProjectPicker, setShowProjectPicker] = useState(false);
 
-    const today = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
-
-    const fetchData = async () => {
-        try {
-            const [attRes, projRes] = await Promise.all([
-                api.get('/attendance'),
-                api.get('/projects')
-            ]);
-            
-            setTeamAttendance(attRes.data);
-            const mine = attRes.data.find((a: any) => a.userId === user?.id);
-            setTodayRecord(mine || null);
-            
-            if (mine?.projectId) {
-                setSelectedProjectId(mine.projectId);
-            }
-            
-            setProjects(projRes.data);
-        } catch (err) {
-            console.error('Error fetching attendance data:', err);
-        } finally {
-            setFetchingTeam(false);
-        }
-    };
+    const todayRecord = teamAttendance.find((a: Attendance) => a.userId === user?.id) || null;
 
     useEffect(() => {
-        fetchData();
-    }, []);
+        if (todayRecord?.projectId && !selectedProjectId) {
+            setSelectedProjectId(todayRecord.projectId);
+        }
+    }, [todayRecord, selectedProjectId]);
 
     const getLocation = async () => {
         try {
@@ -86,7 +70,7 @@ export default function AttendanceScreen() {
         try {
             const coords = await getLocation();
             const now = new Date().toISOString();
-            await api.post('/attendance', {
+            await checkInMutation.mutateAsync({
                 date: now,
                 checkIn: now,
                 projectId: selectedProjectId,
@@ -94,7 +78,6 @@ export default function AttendanceScreen() {
                 longitude: coords?.longitude,
             });
             Alert.alert('✅ Arrivée enregistrée', `Bienvenue ! Il est ${new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`);
-            fetchData();
         } catch (err: any) {
             Alert.alert('Erreur', err.response?.data?.error || 'Impossible d\'enregistrer le check-in');
         } finally {
@@ -107,14 +90,13 @@ export default function AttendanceScreen() {
         try {
             const coords = await getLocation();
             const now = new Date().toISOString();
-            await api.post('/attendance', {
+            await checkOutMutation.mutateAsync({
                 date: now,
                 checkOut: now,
                 latitude: coords?.latitude,
                 longitude: coords?.longitude,
             });
             Alert.alert('✅ Départ enregistré', `Bonne fin de journée ! Départ à ${new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`);
-            fetchData();
         } catch (err: any) {
             Alert.alert('Erreur', err.response?.data?.error || 'Impossible d\'enregistrer le check-out');
         } finally {
@@ -125,11 +107,8 @@ export default function AttendanceScreen() {
     const handleValidate = async (attendanceId: string) => {
         setLoading(true);
         try {
-            await api.post('/attendance/validate', {
-                attendanceIds: [attendanceId]
-            });
+            await validateMutation.mutateAsync([attendanceId]);
             Alert.alert('✅ Validé', 'Le pointage a été validé avec succès.');
-            fetchData();
         } catch (err: any) {
             Alert.alert('Erreur', err.response?.data?.error || 'Validation échouée');
         } finally {
@@ -340,7 +319,7 @@ export default function AttendanceScreen() {
                                 <Text className="text-secondary/30 italic mt-6 text-center font-bold">Aucun membre n'a pointé ce jour.</Text>
                             </PremiumCard>
                         ) : (
-                            teamAttendance.map((record: any, idx: number) => (
+                            teamAttendance.map((record: Attendance, idx: number) => (
                                 <PremiumCard key={record.id} index={idx} glass={true} style={{ padding: 18, marginBottom: 16 }}>
                                     <View className="flex-row items-center justify-between">
                                         <View className="flex-row items-center flex-1">

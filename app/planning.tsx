@@ -20,12 +20,26 @@ import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { useAuth } from '../context/AuthContext';
 import { useRouter } from 'expo-router';
 
+interface PlanningItem {
+    id: string;
+    type: 'TASK' | 'DELIVERY' | 'VISIT';
+    title: string;
+    date: string;
+    status: string;
+    projectName: string;
+    priority?: string;
+    quantity?: string;
+    supplier?: string;
+    visitorName?: string;
+    notes?: string;
+}
+
 export default function PlanningScreen() {
     const { user } = useAuth();
     const router = useRouter();
     const insets = useSafeAreaInsets();
     const [refreshing, setRefreshing] = useState(false);
-    const [planning, setPlanning] = useState<any[]>([]);
+    const [planning, setPlanning] = useState<PlanningItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState<'ALL' | 'TASK' | 'DELIVERY' | 'VISIT'>('ALL');
     const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -64,8 +78,8 @@ export default function PlanningScreen() {
     }, []);
 
     const filteredData = planning
-        .filter(item => filter === 'ALL' || item.type === filter)
-        .filter(item => {
+        .filter((item: PlanningItem) => filter === 'ALL' || item.type === filter)
+        .filter((item: PlanningItem) => {
             if (!selectedDate) return true;
             return new Date(item.date).toDateString() === selectedDate;
         });
@@ -79,7 +93,7 @@ export default function PlanningScreen() {
         }
     };
 
-    const PlanningItem = ({ item, index }: { item: any, index: number }) => {
+    const PlanningItemCard = ({ item, index }: { item: PlanningItem, index: number }) => {
         const { icon: Icon, color, label } = getIcon(item.type);
         const date = new Date(item.date);
         const isToday = new Date().toDateString() === date.toDateString();
@@ -235,7 +249,7 @@ export default function PlanningScreen() {
             ) : (
                 <FlatList
                     data={filteredData}
-                    renderItem={({ item, index }) => <PlanningItem item={item} index={index} />}
+                    renderItem={({ item, index }) => <PlanningItemCard item={item} index={index} />}
                     keyExtractor={item => `${item.type}-${item.id}`}
                     contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 100 }}
                     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#C8842A" />}

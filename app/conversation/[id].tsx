@@ -4,7 +4,7 @@ import {
     KeyboardAvoidingView, Platform, ActivityIndicator, Alert, Image, StyleSheet
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import api, { ASSET_BASE_URL } from '../../lib/api';
+import api, { ASSET_BASE_URL, getBlobFromUri } from '../../lib/api';
 import { ChevronLeft, Send, Paperclip, Clock, AlertCircle, CheckCircle2, X } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -94,11 +94,16 @@ export default function ConversationScreen() {
             formData.append('content', messageText);
             
             if (currentAttachment) {
-                formData.append('photo', {
-                    uri: currentAttachment.uri,
-                    type: currentAttachment.type,
-                    name: currentAttachment.name
-                } as any);
+                if (Platform.OS === 'web') {
+                    const blob = await getBlobFromUri(currentAttachment.uri);
+                    formData.append('photo', blob!, currentAttachment.name);
+                } else {
+                    formData.append('photo', {
+                        uri: currentAttachment.uri,
+                        type: currentAttachment.type,
+                        name: currentAttachment.name
+                    } as any);
+                }
             }
 
             // Must use multipart/form-data for the web backend's feedback replies
@@ -200,11 +205,11 @@ export default function ConversationScreen() {
         groupedReplies[groupedReplies.length - 1].items.push(msg);
     }
 
-    const STATUS_MAP: Record<string, { label: string; color: string; icon: any }> = {
-        EN_ATTENTE: { label: "En attente", color: "text-amber-500", icon: Clock },
-        EN_COURS: { label: "En traitement", color: "text-blue-500", icon: AlertCircle },
-        RESOLU: { label: "Résolu", color: "text-emerald-500", icon: CheckCircle2 },
-        FERME: { label: "Fermé", color: "text-slate-400", icon: X },
+    const STATUS_MAP: Record<string, { label: string; color: string; hex: string; icon: any }> = {
+        EN_ATTENTE: { label: "En attente", color: "text-amber-500", hex: "#F59E0B", icon: Clock },
+        EN_COURS: { label: "En traitement", color: "text-blue-500", hex: "#3B82F6", icon: AlertCircle },
+        RESOLU: { label: "Résolu", color: "text-emerald-500", hex: "#10B981", icon: CheckCircle2 },
+        FERME: { label: "Fermé", color: "text-slate-400", hex: "#94A3B8", icon: X },
     };
 
     const statusMeta = feedback ? (STATUS_MAP[feedback.status] || STATUS_MAP.EN_ATTENTE) : STATUS_MAP.EN_ATTENTE;
@@ -234,7 +239,7 @@ export default function ConversationScreen() {
                         <View className="flex-row items-center mt-1">
                             {feedback && (
                                 <View className="flex-row items-center bg-bg-soft px-1.5 py-0.5 rounded-md border border-border-light mr-2">
-                                    <StatusIcon size={8} color={statusMeta.color.replace('text-', '')} className="mr-1" />
+                                    <StatusIcon size={8} color={statusMeta.hex} className="mr-1" />
                                     <Text className={`text-[8px] font-black uppercase tracking-[1px] ${statusMeta.color}`}>
                                         {statusMeta.label}
                                     </Text>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, RefreshControl, TouchableOpacity, ActivityIndicator, Alert, TextInput, Modal, StyleSheet, Platform, Image, Dimensions } from 'react-native';
-import api, { ASSET_BASE_URL } from '../lib/api';
+import api, { ASSET_BASE_URL, getBlobFromUri } from '../lib/api';
 import { AlertTriangle, MapPin, Search, ChevronDown, CheckCircle, Clock, ChevronLeft, Plus, Image as ImageIcon, X, Trash2 } from 'lucide-react-native';
 import { useAuth } from '../context/AuthContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,6 +11,8 @@ import { PremiumCard } from '../components/ui/PremiumCard';
 import Animated, { FadeInDown, FadeIn, SlideInUp, ZoomIn, FadeInUp } from 'react-native-reanimated';
 import { BlurView } from 'expo-blur';
 import * as ImagePicker from 'expo-image-picker';
+import { Incident, Project } from '@lynx/types';
+import { useIncidents, useCreateIncident, useUpdateIncidentStatus, useProjects } from '@lynx/api-client';
 
 const { width } = Dimensions.get('window');
 
@@ -22,10 +24,12 @@ const getPhotoUrl = (url?: string | null) => {
 };
 
 export default function IncidentsScreen() {
+    const { data: incidents = [], isLoading: loading, refetch } = useIncidents();
+    const { data: projects = [] } = useProjects();
+    const createIncident = useCreateIncident();
+    const updateIncidentStatus = useUpdateIncidentStatus();
+    
     const [refreshing, setRefreshing] = useState(false);
-    const [incidents, setIncidents] = useState<any[]>([]);
-    const [projects, setProjects] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
     const { user } = useAuth();
     const insets = useSafeAreaInsets();
 
@@ -43,33 +47,17 @@ export default function IncidentsScreen() {
 
     const severities = ['FAIBLE', 'MOYENNE', 'HAUTE', 'CRITIQUE'];
 
-    const fetchData = async () => {
-        try {
-            const [paramsRes, incRes] = await Promise.all([
-                api.get('/projects'),
-                api.get('/incidents')
-            ]);
-            setProjects(paramsRes.data);
-            setIncidents(incRes.data);
-            if (paramsRes.data.length > 0 && !selectedProject) {
-                setSelectedProject(paramsRes.data[0].id);
-            }
-        } catch (error) {
-            console.error("Error fetching data:", error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
     useEffect(() => {
-        fetchData();
-    }, []);
+        if (projects.length > 0 && !selectedProject) {
+            setSelectedProject(projects[0].id);
+        }
+    }, [projects, selectedProject]);
 
     const onRefresh = React.useCallback(async () => {
         setRefreshing(true);
-        await fetchData();
+        await refetch();
         setRefreshing(false);
-    }, []);
+    }, [refetch]);
 
     const pickImage = async () => {
         const result = await ImagePicker.launchImageLibraryAsync({
@@ -113,11 +101,16 @@ export default function IncidentsScreen() {
                 const type = match ? `image/${match[1]}` : `image/jpeg`;
 
                 const formData = new FormData();
-                formData.append('file', {
-                    uri: photo.uri,
-                    type,
-                    name: filename
-                } as any);
+                if (Platform.OS === 'web') {
+                    const blob = await getBlobFromUri(photo.uri);
+                    formData.append('file', blob!, filename);
+                } else {
+                    formData.append('file', {
+                        uri: photo.uri,
+                        type,
+                        name: filename
+                    } as any);
+                }
 
                 const uploadRes = await api.post('/upload', formData, {
                     headers: { 'Content-Type': 'multipart/form-data' }
@@ -126,7 +119,7 @@ export default function IncidentsScreen() {
             }
 
             // 2. Create incident
-            await api.post('/incidents', {
+            await createIncident.mutateAsync({
                 projectId: selectedProject,
                 title: title.trim(),
                 description: description.trim(),
@@ -143,7 +136,6 @@ export default function IncidentsScreen() {
             setSeverity('MOYENNE');
             setLocation('');
             setSelectedPhotos([]);
-            fetchData();
         } catch (error: any) {
             Alert.alert("Erreur", error.response?.data?.error || "Une erreur est survenue");
         } finally {
@@ -161,10 +153,10 @@ export default function IncidentsScreen() {
                     text: "Confirmer",
                     onPress: async () => {
                         try {
-                            await api.put(`/incidents/${incidentId}`, {
+                            await updateIncidentStatus.mutateAsync({
+                                id: incidentId,
                                 status: 'FERME'
                             });
-                            fetchData();
                         } catch (error) {
                             Alert.alert('Erreur', 'Impossible de mettre à jour le statut.');
                         }
@@ -194,7 +186,7 @@ export default function IncidentsScreen() {
         }
     };
 
-    const IncidentCard = ({ incident, index }: { incident: any, index: number }) => {
+    const IncidentCard = ({ incident, index }: { incident: Incident, index: number }) => {
         const sevInfo = getSeverityInfo(incident.severity);
         const isResolved = incident.status === 'RESOLU' || incident.status === 'FERME';
 

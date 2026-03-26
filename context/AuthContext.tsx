@@ -2,13 +2,12 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import * as SecureStore from "expo-secure-store";
 import api from "../lib/api";
 import { router } from "expo-router";
+import { Platform } from "react-native";
+import { User as SharedUser } from "@lynx/types";
 
-interface User {
-    id: string;
-    email: string;
+// The mobile API construction adds 'name' field
+interface User extends SharedUser {
     name: string;
-    role: string;
-    image?: string;
 }
 
 interface AuthContextType {
@@ -33,8 +32,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const loadStoredAuth = async () => {
         try {
-            const storedToken = await SecureStore.getItemAsync("auth_token");
-            const storedUser = await SecureStore.getItemAsync("auth_user");
+            let storedToken: string | null = null;
+            let storedUser: string | null = null;
+
+            if (Platform.OS === 'web') {
+                storedToken = localStorage.getItem("auth_token");
+                storedUser = localStorage.getItem("auth_user");
+            } else {
+                storedToken = await SecureStore.getItemAsync("auth_token");
+                storedUser = await SecureStore.getItemAsync("auth_user");
+            }
 
             if (storedToken && storedUser) {
                 setToken(storedToken);
@@ -51,7 +58,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!user) return;
         const updatedUser = { ...user, ...newData };
         setUser(updatedUser);
-        await SecureStore.setItemAsync("auth_user", JSON.stringify(updatedUser));
+        if (Platform.OS === 'web') {
+            localStorage.setItem("auth_user", JSON.stringify(updatedUser));
+        } else {
+            await SecureStore.setItemAsync("auth_user", JSON.stringify(updatedUser));
+        }
     };
 
     const login = async (email: string, password: string) => {
@@ -59,8 +70,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const response = await api.post("/mobile/login", { email, password });
             const { token, user } = response.data;
 
-            await SecureStore.setItemAsync("auth_token", token);
-            await SecureStore.setItemAsync("auth_user", JSON.stringify(user));
+            if (Platform.OS === 'web') {
+                localStorage.setItem("auth_token", token);
+                localStorage.setItem("auth_user", JSON.stringify(user));
+            } else {
+                await SecureStore.setItemAsync("auth_token", token);
+                await SecureStore.setItemAsync("auth_user", JSON.stringify(user));
+            }
 
             setToken(token);
             setUser(user);
@@ -73,8 +89,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const logout = async () => {
         try {
-            await SecureStore.deleteItemAsync("auth_token");
-            await SecureStore.deleteItemAsync("auth_user");
+            if (Platform.OS === 'web') {
+                localStorage.removeItem("auth_token");
+                localStorage.removeItem("auth_user");
+            } else {
+                await SecureStore.deleteItemAsync("auth_token");
+                await SecureStore.deleteItemAsync("auth_user");
+            }
             setToken(null);
             setUser(null);
             router.replace("/");

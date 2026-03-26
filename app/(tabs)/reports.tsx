@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, RefreshControl, TouchableOpacity, ActivityIndicator, TextInput, Alert, Modal, StyleSheet, Platform, Image } from 'react-native';
-import api, { ASSET_BASE_URL } from '../../lib/api';
+import api, { ASSET_BASE_URL, getBlobFromUri } from '../../lib/api';
 import { 
     ClipboardList, 
     Calendar,
@@ -234,11 +234,16 @@ export default function ReportsScreen() {
             const uploadedUrls = [];
             for (const photo of selectedPhotos) {
                 const formData = new FormData();
-                formData.append('file', {
-                    uri: photo.uri,
-                    type: 'image/jpeg',
-                    name: `log_${Date.now()}.jpg`
-                } as any);
+                if (Platform.OS === 'web') {
+                    const blob = await getBlobFromUri(photo.uri);
+                    formData.append('file', blob!, `log_${Date.now()}.jpg`);
+                } else {
+                    formData.append('file', {
+                        uri: photo.uri,
+                        type: 'image/jpeg',
+                        name: `log_${Date.now()}.jpg`
+                    } as any);
+                }
 
                 const uploadRes = await api.post('/upload', formData, {
                     headers: { 'Content-Type': 'multipart/form-data' }

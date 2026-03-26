@@ -9,31 +9,19 @@ import { Input } from '../components/ui/Input';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PremiumCard } from '../components/ui/PremiumCard';
 import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
+import { Project } from '@lynx/types';
+import { useProjects, useCreateDelivery } from '@lynx/api-client';
 
 export default function SupplyRequestScreen() {
-    const [projects, setProjects] = useState<any[]>([]);
+    const { data: projects = [], isLoading: fetching } = useProjects();
+    const { mutate: createDelivery, isPending: loading } = useCreateDelivery();
+
     const [selectedProject, setSelectedProject] = useState("");
     const [item, setItem] = useState("");
     const [quantity, setQuantity] = useState("");
     const [notes, setNotes] = useState("");
-    const [loading, setLoading] = useState(false);
-    const [fetching, setFetching] = useState(true);
     const router = useRouter();
     const insets = useSafeAreaInsets();
-
-    useEffect(() => {
-        const fetchProjects = async () => {
-            try {
-                const response = await api.get('/projects');
-                setProjects(response.data);
-            } catch (error) {
-                console.error("Error fetching projects:", error);
-            } finally {
-                setFetching(false);
-            }
-        };
-        fetchProjects();
-    }, []);
 
     const handleSubmit = async () => {
         if (!selectedProject || !item || !quantity) {
@@ -41,22 +29,23 @@ export default function SupplyRequestScreen() {
             return;
         }
 
-        setLoading(true);
-        try {
-            await api.post('/deliveries', {
-                projectId: selectedProject,
-                item,
-                quantity,
-                plannedDate: new Date().toISOString(),
-                notes: notes ? `SIGNALEMENT RUPTURE : ${notes}` : "SIGNALEMENT RUPTURE DE STOCK"
-            });
-            Alert.alert("Succès", "Rupture de stock signalée au conducteur.");
-            router.back();
-        } catch (error: any) {
-            Alert.alert("Erreur", error.response?.data?.error || "Une erreur est survenue");
-        } finally {
-            setLoading(false);
-        }
+        const payload = {
+            projectId: selectedProject,
+            item,
+            quantity,
+            plannedDate: new Date().toISOString(),
+            notes: notes ? `SIGNALEMENT RUPTURE : ${notes}` : "SIGNALEMENT RUPTURE DE STOCK"
+        };
+
+        createDelivery(payload, {
+            onSuccess: () => {
+                Alert.alert("Succès", "Rupture de stock signalée au conducteur.");
+                router.back();
+            },
+            onError: (error: any) => {
+                Alert.alert("Erreur", error.response?.data?.error || "Une erreur est survenue");
+            }
+        });
     };
 
     return (

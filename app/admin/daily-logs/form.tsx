@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ChevronLeft, Camera, X, Check, CloudRain, Sun, Cloud, Thermometer } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
-import api, { ASSET_BASE_URL } from '../../../lib/api';
+import api, { ASSET_BASE_URL, getBlobFromUri } from '../../../lib/api';
 import { Input } from '../../../components/ui/Input';
 import { Button } from '../../../components/ui/Button';
 import Animated, { FadeInUp } from 'react-native-reanimated';
@@ -82,7 +82,12 @@ export default function DailyLogFormScreen() {
         const match = /\.(\w+)$/.exec(filename || '');
         const type = match ? `image/${match[1]}` : `image`;
 
-        formData.append('file', { uri, name: filename, type } as any);
+        if (Platform.OS === 'web') {
+            const blob = await getBlobFromUri(uri);
+            formData.append('file', blob!, filename!);
+        } else {
+            formData.append('file', { uri, name: filename, type } as any);
+        }
 
         try {
             const res = await api.post('/upload', formData, {

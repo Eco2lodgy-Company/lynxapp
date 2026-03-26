@@ -10,11 +10,11 @@ import { PremiumCard } from '../../components/ui/PremiumCard';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { Input } from '../../components/ui/Input';
 
-const STATUS_MAP: Record<string, { label: string; color: string; icon: any }> = {
-    EN_ATTENTE: { label: "En attente", color: "text-amber-500", icon: Clock },
-    EN_COURS: { label: "En traitement", color: "text-blue-500", icon: AlertCircle },
-    RESOLU: { label: "Résolu", color: "text-emerald-500", icon: CheckCircle2 },
-    FERME: { label: "Fermé", color: "text-slate-400", icon: X },
+const STATUS_MAP: Record<string, { label: string; color: string; hex: string; icon: any }> = {
+    EN_ATTENTE: { label: "En attente", color: "text-amber-500", hex: "#F59E0B", icon: Clock },
+    EN_COURS: { label: "En traitement", color: "text-blue-500", hex: "#3B82F6", icon: AlertCircle },
+    RESOLU: { label: "Résolu", color: "text-emerald-500", hex: "#10B981", icon: CheckCircle2 },
+    FERME: { label: "Fermé", color: "text-slate-400", hex: "#94A3B8", icon: X },
 };
 
 const PRIORITY_MAP: Record<string, { label: string; color: string }> = {
@@ -27,7 +27,10 @@ const PRIORITY_MAP: Record<string, { label: string; color: string }> = {
 export default function MessagesScreen() {
     const [refreshing, setRefreshing] = useState(false);
     const [feedbacks, setFeedbacks] = useState<any[]>([]);
+    const [conversations, setConversations] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [activeTab, setActiveTab] = useState<'DEMANDES' | 'DISCUSSIONS'>('DEMANDES');
+    
     const { user } = useAuth();
     const insets = useSafeAreaInsets();
     const router = useRouter();
@@ -43,28 +46,60 @@ export default function MessagesScreen() {
         priority: 'NORMALE',
     });
 
+    const isOuvrier = user?.role === 'OUVRIER';
+    const canCreate = ['ADMIN', 'CONDUCTEUR'].includes(user?.role || '');
+
     const fetchFeedbacks = async () => {
         try {
             const response = await api.get('/feedbacks');
             setFeedbacks(response.data);
         } catch (error) {
             console.error("Error fetching feedbacks:", error);
-        } finally {
-            setLoading(false);
         }
     };
 
+    const fetchConversations = async () => {
+        try {
+            const response = await api.get('/conversations');
+            setConversations(response.data);
+        } catch (error) {
+            console.error("Error fetching conversations:", error);
+        }
+    };
+
+    const fetchData = async () => {
+        if (isOuvrier) {
+            setLoading(false);
+            return;
+        }
+        setLoading(true);
+        await Promise.all([fetchFeedbacks(), fetchConversations()]);
+        setLoading(false);
+    };
+
     useEffect(() => {
-        fetchFeedbacks();
+        fetchData();
     }, []);
+
+    // Re-fetch the active tab data every time the tab changes (removes stale-data lag)
+    useEffect(() => {
+        if (isOuvrier) return;
+        if (activeTab === 'DEMANDES') fetchFeedbacks();
+        else fetchConversations();
+    }, [activeTab]);
 
     const onRefresh = React.useCallback(async () => {
         setRefreshing(true);
-        await fetchFeedbacks();
+        await fetchData();
         setRefreshing(false);
     }, []);
 
     const openNewModal = async () => {
+        if (activeTab === 'DISCUSSIONS') {
+            router.push('/chat/new');
+            return;
+        }
+
         setShowNewModal(true);
         try {
             const res = await api.get('/projects');
@@ -95,6 +130,19 @@ export default function MessagesScreen() {
             setCreating(false);
         }
     };
+
+    if (isOuvrier) {
+        return (
+            <View className="flex-1 bg-white items-center justify-center px-10">
+                <LinearGradient colors={['#FFFFFF', '#FDFCFB', '#F8F9FA']} style={StyleSheet.absoluteFill} />
+                <View className="w-20 h-20 bg-bg-soft rounded-full items-center justify-center mb-6">
+                    <X size={40} color="#E67E22" />
+                </View>
+                <Text className="text-secondary text-xl font-black text-center mb-2 uppercase tracking-tighter">Accès Restreint</Text>
+                <Text className="text-secondary/50 text-center font-medium">La messagerie est réservée aux conducteurs et chefs de chantier.</Text>
+            </View>
+        );
+    }
 
     const FeedbackCard = ({ feedback, index }: { feedback: any, index: number }) => {
         const statusMeta = STATUS_MAP[feedback.status] || STATUS_MAP.EN_ATTENTE;
@@ -137,18 +185,63 @@ export default function MessagesScreen() {
                                 </View>
                             )}
                             <View className="flex-row items-center bg-bg-soft px-3 py-1.5 rounded-xl border border-border-light gap-1.5">
-                                <StatusIcon size={10} color={statusMeta.color.replace('text-', '').replace('bg-', '')} />
+                                <StatusIcon size={10} color={statusMeta.hex} />
                                 <Text className={`text-[9px] font-black uppercase tracking-[1px] ${statusMeta.color}`}>
                                     {statusMeta.label}
                                 </Text>
                             </View>
-                            <View className="flex-row items-center">
-                                <AlertTriangle size={10} color={priorityMeta.color.replace('text-', '')} className="mr-1" />
-                                <Text className={`text-[9px] font-black uppercase tracking-[1px] ${priorityMeta.color}`}>
-                                    {priorityMeta.label}
+                        </View>
+                    </View>
+                </TouchableOpacity>
+            </PremiumCard>
+        );
+    };
+
+    const ConversationCard = ({ conv, index }: { conv: any, index: number }) => {
+        const lastMsg = conv.messages?.[0];
+        
+        const getConvName = () => {
+            if (conv.name) return conv.name;
+            const others = conv.members?.filter((m: any) => m.userId !== user?.id) || [];
+            if (others.length === 0) return "Moi-même";
+            if (others.length === 1) return `${others[0].user.firstName} ${others[0].user.lastName}`;
+            return others.map((m: any) => m.user.firstName).join(', ');
+        };
+
+        return (
+            <PremiumCard index={index} glass={true} style={{ padding: 16, marginBottom: 16, borderRadius: 28 }}>
+                <TouchableOpacity 
+                    className="flex-row items-start"
+                    activeOpacity={0.7}
+                    onPress={() => router.push(`/chat/${conv.id}`)}
+                >
+                    <View className="w-14 h-14 rounded-[20px] bg-secondary/10 items-center justify-center mr-4 border border-secondary/10 overflow-hidden">
+                        <User size={24} color="#E67E22" strokeWidth={2} />
+                    </View>
+                    
+                    <View className="flex-1">
+                        <View className="flex-row justify-between items-start mb-1">
+                            <Text className="text-secondary font-black text-[16px] tracking-tight flex-1 mr-2" numberOfLines={1}>
+                                {getConvName()}
+                            </Text>
+                            {lastMsg && (
+                                <Text className="text-secondary/30 text-[9px] font-black uppercase tracking-[1px] mt-1 shrink-0">
+                                    {new Date(lastMsg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </Text>
+                            )}
+                        </View>
+                        
+                        <Text className="text-secondary/60 text-[13px] font-medium leading-[18px] mb-2" numberOfLines={1}>
+                            {lastMsg ? `${lastMsg.authorId === user?.id ? 'Vous : ' : ''}${lastMsg.content || 'Photo'}` : 'Commencez à discuter...'}
+                        </Text>
+                        
+                        {conv.project && (
+                            <View className="self-start bg-secondary/5 px-3 py-1.5 rounded-xl border border-secondary/10">
+                                <Text className="text-secondary/60 text-[9px] font-black uppercase tracking-[2px]">
+                                    {conv.project.name}
                                 </Text>
                             </View>
-                        </View>
+                        )}
                     </View>
                 </TouchableOpacity>
             </PremiumCard>
@@ -168,18 +261,44 @@ export default function MessagesScreen() {
                 className="flex-1 px-5"
                 style={{ paddingTop: Math.max(insets.top, 24) }}
             >
-                <Animated.View entering={FadeInUp.duration(600)} className="mb-8 flex-row justify-between items-end">
+                <Animated.View entering={FadeInUp.duration(600)} className="mb-6 flex-row justify-between items-end">
                     <View>
-                        <Text className="text-secondary/40 text-sm font-black uppercase tracking-[5px] mb-2">Espace Client</Text>
-                        <Text className="text-secondary text-4xl font-black tracking-tighter">Demandes</Text>
+                        <Text className="text-secondary/40 text-sm font-black uppercase tracking-[5px] mb-2">LYNX Messagerie</Text>
+                        <Text className="text-secondary text-4xl font-black tracking-tighter">Messages</Text>
                     </View>
-                    <TouchableOpacity 
-                        onPress={openNewModal}
-                        className="w-14 h-14 bg-primary rounded-2xl items-center justify-center shadow-xl shadow-primary/40"
-                    >
-                        <Plus size={28} color="white" strokeWidth={3} />
-                    </TouchableOpacity>
+                    {(canCreate || activeTab === 'DEMANDES') && (
+                        <TouchableOpacity 
+                            onPress={openNewModal}
+                            className="w-14 h-14 bg-primary rounded-2xl items-center justify-center shadow-xl shadow-primary/40"
+                        >
+                            <Plus size={28} color="white" strokeWidth={3} />
+                        </TouchableOpacity>
+                    )}
                 </Animated.View>
+
+                {/* Tabs / Segmented Control */}
+                <View className="flex-row bg-bg-soft p-1.5 rounded-2xl mb-8 border border-border-light shadow-sm">
+                    <TouchableOpacity 
+                        onPress={() => setActiveTab('DEMANDES')}
+                        accessible={true}
+                        accessibilityRole="button"
+                        accessibilityLabel="Demandes"
+                        accessibilityState={{ selected: activeTab === 'DEMANDES' }}
+                        className={`flex-1 py-3.5 rounded-xl items-center justify-center ${activeTab === 'DEMANDES' ? 'bg-white shadow-sm' : ''}`}
+                    >
+                        <Text className={`text-[10px] font-black uppercase tracking-[2px] ${activeTab === 'DEMANDES' ? 'text-primary' : 'text-secondary/40'}`}>Demandes</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                        onPress={() => setActiveTab('DISCUSSIONS')}
+                        accessible={true}
+                        accessibilityRole="button"
+                        accessibilityLabel="Discussions"
+                        accessibilityState={{ selected: activeTab === 'DISCUSSIONS' }}
+                        className={`flex-1 py-3.5 rounded-xl items-center justify-center ${activeTab === 'DISCUSSIONS' ? 'bg-white shadow-sm' : ''}`}
+                    >
+                        <Text className={`text-[10px] font-black uppercase tracking-[2px] ${activeTab === 'DISCUSSIONS' ? 'text-primary' : 'text-secondary/40'}`}>Discussions</Text>
+                    </TouchableOpacity>
+                </View>
 
                 {loading ? (
                     <View className="flex-1 items-center justify-center">
@@ -192,19 +311,36 @@ export default function MessagesScreen() {
                         contentContainerStyle={{ paddingBottom: 100 }}
                         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#E67E22" />}
                     >
-                        {feedbacks.length > 0 ? (
-                            feedbacks.map((fb, index) => (
-                                <FeedbackCard key={fb.id} feedback={fb} index={index} />
-                            ))
-                        ) : (
-                            <View className="items-center justify-center py-24 bg-bg-soft/50 rounded-[40px] border border-border-light">
-                                <View className="w-24 h-24 bg-white rounded-[35px] items-center justify-center mb-8 shadow-sm">
-                                    <MessageSquare size={40} color="#F2F2F2" strokeWidth={1.5} />
+                        {activeTab === 'DEMANDES' ? (
+                            feedbacks.length > 0 ? (
+                                feedbacks.map((fb, index) => (
+                                    <FeedbackCard key={fb.id} feedback={fb} index={index} />
+                                ))
+                            ) : (
+                                <View className="items-center justify-center py-24 bg-bg-soft/50 rounded-[40px] border border-border-light">
+                                    <View className="w-24 h-24 bg-white rounded-[35px] items-center justify-center mb-8 shadow-sm">
+                                        <MessageSquare size={40} color="#F2F2F2" strokeWidth={1.5} />
+                                    </View>
+                                    <Text className="text-secondary/30 font-black text-xs uppercase tracking-[4px] text-center px-10">
+                                        Aucune demande client
+                                    </Text>
                                 </View>
-                                <Text className="text-secondary/30 font-black text-xs uppercase tracking-[4px] text-center px-10">
-                                    Aucune demande envoyée
-                                </Text>
-                            </View>
+                            )
+                        ) : (
+                            conversations.length > 0 ? (
+                                conversations.map((conv, index) => (
+                                    <ConversationCard key={conv.id} conv={conv} index={index} />
+                                ))
+                            ) : (
+                                <View className="items-center justify-center py-24 bg-bg-soft/50 rounded-[40px] border border-border-light">
+                                    <View className="w-24 h-24 bg-white rounded-[35px] items-center justify-center mb-8 shadow-sm">
+                                        <User size={40} color="#F2F2F2" strokeWidth={1.5} />
+                                    </View>
+                                    <Text className="text-secondary/30 font-black text-xs uppercase tracking-[4px] text-center px-10">
+                                        Aucun canal de discussion
+                                    </Text>
+                                </View>
+                            )
                         )}
                     </ScrollView>
                 )}

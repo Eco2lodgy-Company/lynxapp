@@ -3,7 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, RefreshCon
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ChevronLeft, Plus, UserPlus, Search, Edit2, Trash2, Mail, Phone, Shield, Key } from 'lucide-react-native';
+import { ChevronLeft, Plus, UserPlus, Search, Edit2, Trash2, Mail, Phone, Shield, Key, Users } from 'lucide-react-native';
 import api from '../../lib/api';
 import { PremiumCard } from '../../components/ui/PremiumCard';
 import { Input } from '../../components/ui/Input';

@@ -8,17 +8,18 @@ import { PremiumCard } from '../components/ui/PremiumCard';
 import Animated, { FadeInDown, FadeIn, FadeOut, SlideInUp } from 'react-native-reanimated';
 import { useAuth } from '../context/AuthContext';
 import { useRouter } from 'expo-router';
+import { Task } from '@lynx/types';
 
 export default function TasksScreen() {
     const { user } = useAuth();
     const router = useRouter();
     const [refreshing, setRefreshing] = useState(false);
-    const [tasks, setTasks] = useState<any[]>([]);
+    const [tasks, setTasks] = useState<Task[]>([]);
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(false);
     const insets = useSafeAreaInsets();
 
-    const [progressModal, setProgressModal] = useState<{ visible: boolean; task: any | null }>({ visible: false, task: null });
+    const [progressModal, setProgressModal] = useState<{ visible: boolean; task: Task | null }>({ visible: false, task: null });
     const [newProgress, setNewProgress] = useState('0');
 
     const canManageTasks = user?.role === 'ADMIN' || user?.role === 'CONDUCTEUR';
@@ -59,7 +60,7 @@ export default function TasksScreen() {
         }
     };
 
-    const handleActionPress = (task: any) => {
+    const handleActionPress = (task: Task) => {
         if (!canManageTasks) return;
 
         const options = [
@@ -115,7 +116,7 @@ export default function TasksScreen() {
         }
     };
 
-    const TaskCard = ({ task, index }: { task: any, index: number }) => {
+    const TaskCard = ({ task, index }: { task: Task, index: number }) => {
         const statusInfo = getStatusInfo(task.status);
         const isCompleted = task.status === 'TERMINE';
         const progress = task.progress || 0;

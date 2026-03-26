@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+  darkMode: 'class',
   presets: [require("nativewind/preset")],
   content: ["./app/**/*.{js,jsx,ts,tsx}", "./components/**/*.{js,jsx,ts,tsx}"],
   theme: {
@@ -35,7 +36,22 @@ module.exports = {
           300: "#4B5563",
           200: "#374151",
           100: "#1F2937",
+        },
+        emerald: {
+          50: '#ecfdf5', 100: '#d1fae5', 200: '#a7f3d0', 300: '#6ee7b7', 
+          400: '#34d399', 500: '#10b981', 600: '#059669', 700: '#047857',
+        },
+        amber: {
+          50: '#fffbeb', 100: '#fef3c7', 200: '#fde68a', 300: '#fcd34d',
+          400: '#fbbf24', 500: '#f59e0b', 600: '#d97706', 700: '#b45309',
+        },
+        blue: {
+          50: '#eff6ff', 100: '#dbeafe', 200: '#bfdbfe', 300: '#93c5fd',
+          400: '#60a5fa', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8',
         }
+      },
+      fontFamily: {
+        mono: ['monospace'],
       },
       spacing: {
         'safe': '24px',

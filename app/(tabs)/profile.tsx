@@ -56,16 +56,21 @@ export default function ProfileScreen() {
 
             const formData = new FormData();
             
-            // @ts-ignore
-            formData.append('file', {
-                uri,
-                type,
-                name: filename
-            });
+            if (Platform.OS === 'web') {
+                // On web, we need to fetch the blob from the uri
+                const response = await fetch(uri);
+                const blob = await response.blob();
+                formData.append('file', blob, filename);
+            } else {
+                // @ts-ignore
+                formData.append('file', {
+                    uri,
+                    type,
+                    name: filename
+                });
+            }
 
-            const uploadRes = await api.post('/upload', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' },
-            });
+            const uploadRes = await api.post('/upload', formData);
 
             const imageUrl = uploadRes.data.url;
             

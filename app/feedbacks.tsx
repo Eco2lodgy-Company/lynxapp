@@ -7,13 +7,14 @@ import { Input } from '../components/ui/Input';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import Animated, { FadeIn, FadeInDown, ZoomIn } from 'react-native-reanimated';
+import { Photo } from '@lynx/types';
 
 export default function FeedbacksScreen() {
     const [refreshing, setRefreshing] = useState(false);
-    const [photos, setPhotos] = useState<any[]>([]);
+    const [photos, setPhotos] = useState<Photo[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
-    const [lightbox, setLightbox] = useState<any | null>(null);
+    const [lightbox, setLightbox] = useState<Photo | null>(null);
     const insets = useSafeAreaInsets();
 
     const fetchPhotos = async () => {
@@ -37,7 +38,7 @@ export default function FeedbacksScreen() {
         setRefreshing(false);
     }, []);
 
-    const filteredPhotos = photos.filter(p => 
+    const filteredPhotos = photos.filter((p: Photo) => 
         (p.caption?.toLowerCase() || "").includes(search.toLowerCase()) ||
         p.project?.name.toLowerCase().includes(search.toLowerCase())
     );

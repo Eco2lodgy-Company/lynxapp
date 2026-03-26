@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Image, StyleSheet, Dimensions, RefreshControl, Modal } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Image, StyleSheet, Dimensions, RefreshControl, Modal, Alert, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ChevronLeft, Filter, Image as ImageIcon, X, MapPin, Calendar, Clock, ChevronRight } from 'lucide-react-native';
-import api, { ASSET_BASE_URL } from '../lib/api';
-import { PremiumCard } from '../components/ui/PremiumCard';
-import Animated, { FadeIn, FadeInDown, ZoomIn } from 'react-native-reanimated';
+import { ChevronLeft, Image as ImageIcon, X, Calendar, Plus } from 'lucide-react-native';
+import api, { ASSET_BASE_URL, getBlobFromUri } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
+import * as ImagePicker from 'expo-image-picker';
+import Animated, { FadeInDown, ZoomIn } from 'react-native-reanimated';
+import { Photo, Project } from '@lynx/types';
 
 const { width } = Dimensions.get('window');
 const COLUMN_WIDTH = (width - 60) / 2;
@@ -21,12 +23,13 @@ const getPhotoUrl = (url?: string) => {
 export default function PhotoGalleryScreen() {
     const router = useRouter();
     const insets = useSafeAreaInsets();
+    const { user } = useAuth();
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    const [photos, setPhotos] = useState<any[]>([]);
-    const [projects, setProjects] = useState<any[]>([]);
+    const [photos, setPhotos] = useState<Photo[]>([]);
+    const [projects, setProjects] = useState<Project[]>([]);
     const [selectedProject, setSelectedProject] = useState<string | null>(null);
-    const [selectedPhoto, setSelectedPhoto] = useState<any>(null);
+    const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
 
     const fetchData = async () => {
         try {
@@ -57,8 +60,56 @@ export default function PhotoGalleryScreen() {
         ? photos.filter(p => p.project?.id === selectedProject)
         : photos;
 
+    const canUpload = ['ADMIN', 'CONDUCTEUR', 'CHEF_EQUIPE'].includes(user?.role || '');
+
+    const pickImage = async () => {
+        try {
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                quality: 0.7,
+            });
+            
+            if (!result.canceled && result.assets[0] && selectedProject) {
+                setLoading(true);
+                const asset = result.assets[0];
+                const formData = new FormData();
+                
+                if (Platform.OS === 'web') {
+                    const blob = await getBlobFromUri(asset.uri);
+                    formData.append('file', blob!, `photo_${Date.now()}.webp`);
+                } else {
+                    formData.append('file', {
+                        uri: asset.uri,
+                        type: 'image/jpeg',
+                        name: `photo_${Date.now()}.jpg`
+                    } as any);
+                }
+
+                const uploadRes = await api.post('/upload', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+
+                await api.post('/photos', {
+                    url: uploadRes.data.url,
+                    caption: "Photo ajoutée manuellement",
+                    projectId: selectedProject,
+                    takenAt: new Date().toISOString()
+                });
+
+                fetchData();
+            } else if (!selectedProject) {
+                Alert.alert("Projet requis", "Veuillez sélectionner un projet spécifique avant d'ajouter une photo.");
+            }
+        } catch (error) {
+            console.error("Error uploading photo:", error);
+            Alert.alert("Erreur", "Impossible d'ajouter la photo.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const PhotoViewer = () => (
-        <Modal visible={!!selectedPhoto} transparent animationType="fade">
+        <Modal visible={!!selectedPhoto} transparent animationType="fade" onRequestClose={() => setSelectedPhoto(null)}>
             <View className="flex-1 bg-black/95 justify-center">
                 <TouchableOpacity 
                     onPress={() => setSelectedPhoto(null)}
@@ -78,7 +129,12 @@ export default function PhotoGalleryScreen() {
                 )}
 
                 <View className="absolute bottom-12 left-6 right-6">
-                    <Text className="text-white text-2xl font-black mb-2">{selectedPhoto?.project?.name}</Text>
+                    <View className="flex-row items-center mb-2">
+                        <View className={`px-2 py-0.5 rounded-md mr-3 ${selectedPhoto?.source === 'MESSAGE' ? 'bg-blue-500' : 'bg-primary'}`}>
+                            <Text className="text-white text-[8px] font-black uppercase tracking-wider">{selectedPhoto?.source || 'RAPPORT'}</Text>
+                        </View>
+                        <Text className="text-white text-2xl font-black">{selectedPhoto?.project?.name}</Text>
+                    </View>
                     <View className="flex-row items-center mb-4">
                         <Calendar size={14} color="#E67E22" />
                         <Text className="text-white/60 text-xs font-bold ml-2">
@@ -152,6 +208,9 @@ export default function PhotoGalleryScreen() {
                                     className="bg-white rounded-[32px] overflow-hidden border border-border-light shadow-sm"
                                     style={{ height: COLUMN_WIDTH }}
                                 >
+                                    <View className={`absolute top-3 left-3 z-10 px-2 py-0.5 rounded-md ${photo.source === 'MESSAGE' ? 'bg-blue-500/80' : 'bg-primary/80'}`}>
+                                        <Text className="text-white text-[7px] font-black uppercase tracking-widest">{photo.source || 'RAPPORT'}</Text>
+                                    </View>
                                     <Image 
                                         source={{ uri: getPhotoUrl(photo.url) }}
                                         style={{ width: '100%', height: '100%' }}
@@ -180,6 +239,15 @@ export default function PhotoGalleryScreen() {
                         </View>
                     )}
                 </ScrollView>
+            )}
+
+            {canUpload && (
+                <TouchableOpacity
+                    onPress={pickImage}
+                    className="absolute bottom-8 right-8 w-16 h-16 bg-primary rounded-full items-center justify-center shadow-xl shadow-primary/40 border-4 border-white"
+                >
+                    <Plus color="white" size={32} strokeWidth={3} />
+                </TouchableOpacity>
             )}
 
             <PhotoViewer />
