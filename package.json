@@ -7,7 +7,7 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "type-check": "npx --yes typescript@5.5.4 tsc"
+    "type-check": "npx --yes -p typescript@5.5.4 tsc"
   },
   "dependencies": {
     "@expo/metro-runtime": "~3.2.3",
